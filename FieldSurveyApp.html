@@ -1,0 +1,2676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FieldSurvey — Damage Assessment</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- SheetJS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root {
+    --primary: #1a5f7a;
+    --primary-dark: #134a60;
+    --primary-light: #e8f4f8;
+    --accent: #e8734a;
+    --accent-light: #fdf0ea;
+    --success: #2d7d46;
+    --success-light: #e8f5ec;
+    --warning: #c0701a;
+    --danger: #c0392b;
+    --danger-light: #fdecea;
+    --text: #1a2332;
+    --text-muted: #5a6a7a;
+    --border: #d0dde8;
+    --bg: #f0f4f8;
+    --white: #ffffff;
+    --panel-bg: #ffffff;
+    --topbar-h: 56px;
+    --bottomnav-h: 60px;
+    --radius: 12px;
+    --shadow: 0 4px 24px rgba(26,95,122,0.13);
+    --shadow-sm: 0 2px 8px rgba(26,95,122,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-h);
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; padding: 0 16px; gap: 12px;
+    z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  #topbar .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; flex: 1; }
+  #topbar .logo span { color: #7dd3f0; }
+  #topbar .mission-label { font-size: 12px; color: rgba(255,255,255,0.75); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #topbar .inspector-badge {
+    background: rgba(255,255,255,0.15); border-radius: 20px;
+    padding: 4px 10px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+
+  /* ── BOTTOM NAV ── */
+  #bottomnav {
+    position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottomnav-h);
+    background: var(--white); border-top: 1px solid var(--border);
+    display: flex; z-index: 1000; box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; background: none; border: none; cursor: pointer; color: var(--text-muted);
+    font-size: 10px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase;
+    transition: color 0.15s;
+  }
+  .nav-btn.active { color: var(--primary); }
+  .nav-btn svg { width: 22px; height: 22px; }
+
+  /* ── SCREENS ── */
+  .screen {
+    position: fixed; top: var(--topbar-h); left: 0; right: 0;
+    bottom: var(--bottomnav-h); overflow: hidden; display: none;
+  }
+  .screen.active { display: block; }
+
+  /* ── MAP SCREEN ── */
+  #map { width: 100%; height: 100%; }
+  #map-fab {
+    position: absolute; bottom: 20px; right: 16px; z-index: 500;
+    background: var(--accent); color: #fff; border: none; border-radius: 56px;
+    padding: 0 20px; height: 52px; font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(232,115,74,0.4); transition: transform 0.1s;
+  }
+  #map-fab:active { transform: scale(0.96); }
+  #map-fab svg { width: 20px; height: 20px; }
+  #map-locate {
+    position: absolute; bottom: 84px; right: 16px; z-index: 500;
+    background: var(--white); border: 1px solid var(--border); border-radius: 50%;
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: var(--shadow-sm);
+  }
+  #map-locate svg { width: 20px; height: 20px; color: var(--primary); }
+  #osm-hint {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(26,95,122,0.95); color: #fff; border-radius: 24px;
+    padding: 10px 16px; font-size: 14px; font-weight: 600; z-index: 500;
+    display: none; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    display: none; align-items: center; gap: 8px;
+  }
+  #osm-hint.active { display: flex; }
+
+  /* ── SLIDE-UP PANEL ── */
+  #panel-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    z-index: 800; display: none; backdrop-filter: blur(2px);
+  }
+  #panel-overlay.open { display: block; }
+  #form-panel {
+    position: fixed; left: 0; right: 0;
+    bottom: var(--bottomnav-h);
+    height: calc(90vh - var(--bottomnav-h));
+    background: var(--panel-bg); border-radius: 20px 20px 0 0;
+    z-index: 900; transform: translateY(100%); transition: transform 0.32s cubic-bezier(0.32,0.72,0,1);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #form-panel.open { transform: translateY(0); }
+  .panel-handle {
+    width: 40px; height: 4px; background: var(--border); border-radius: 2px;
+    margin: 12px auto 0;
+  }
+  .panel-header {
+    display: flex; align-items: center; padding: 12px 16px 8px;
+    border-bottom: 1px solid var(--border); gap: 12px;
+  }
+  .panel-header h2 { flex: 1; font-size: 17px; font-weight: 700; color: var(--text); }
+  .panel-close {
+    background: var(--bg); border: none; border-radius: 50%; width: 32px; height: 32px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+  }
+
+  /* ── FORM PAGES ── */
+  .form-pages { flex: 1; overflow: hidden; position: relative; }
+  .form-page {
+    position: absolute; inset: 0; overflow-y: auto; padding: 16px;
+    display: none; flex-direction: column; gap: 14px;
+  }
+  .form-page.active { display: flex; }
+
+  /* Page indicator */
+  .page-indicator {
+    display: flex; gap: 6px; justify-content: center; padding: 10px 0 4px;
+  }
+  .page-dot {
+    width: 8px; height: 8px; border-radius: 4px; background: var(--border); transition: all 0.2s;
+  }
+  .page-dot.active { background: var(--primary); width: 24px; }
+
+  /* Form elements */
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .field-label .req { color: var(--danger); margin-left: 2px; }
+  .field-hint { font-size: 11px; color: var(--text-muted); }
+  .field-input {
+    border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    font-size: 15px; color: var(--text); background: var(--white); outline: none;
+    transition: border-color 0.15s; width: 100%;
+  }
+  .field-input:focus { border-color: var(--primary); }
+  .field-input.error { border-color: var(--danger); }
+  select.field-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a6a7a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  textarea.field-input { min-height: 80px; resize: vertical; }
+
+  /* Location card */
+  .location-card {
+    background: var(--primary-light); border: 1.5px solid var(--primary); border-radius: 10px;
+    padding: 12px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .location-card svg { width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; margin-top: 2px; }
+  .location-card .loc-text { flex: 1; }
+  .location-card .loc-coords { font-size: 13px; font-weight: 700; color: var(--primary); }
+  .location-card .loc-address { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .location-card .loc-osm { font-size: 11px; color: var(--success); margin-top: 2px; font-weight: 600; }
+
+  /* OSM feature card */
+  .osm-card {
+    background: var(--success-light); border: 1.5px solid var(--success); border-radius: 10px;
+    padding: 10px 12px; font-size: 13px; color: var(--success); font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* Chip selector */
+  .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+    background: var(--white); font-size: 13px; font-weight: 600; cursor: pointer;
+    color: var(--text-muted); transition: all 0.15s; user-select: none;
+  }
+  .chip.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .chip.damage-none { }
+  .chip.damage-1.selected { background: #2ecc71; border-color: #2ecc71; }
+  .chip.damage-2.selected { background: #f1c40f; border-color: #f1c40f; color: var(--text); }
+  .chip.damage-3.selected { background: #e67e22; border-color: #e67e22; }
+  .chip.damage-4.selected { background: #e74c3c; border-color: #e74c3c; }
+  .chip.damage-5.selected { background: #8e44ad; border-color: #8e44ad; }
+
+  /* Damage scale sections */
+  .scale-section { display: none; flex-direction: column; gap: 14px; }
+  .scale-section.active { display: flex; }
+  .scale-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text-muted); padding-bottom: 4px; border-bottom: 1px solid var(--border);
+  }
+
+  /* Range slider */
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--primary); }
+  .slider-val { font-size: 14px; font-weight: 700; color: var(--primary); min-width: 28px; text-align: right; }
+
+  /* Photo section */
+  .photo-actions { display: flex; gap: 10px; }
+  .photo-btn {
+    flex: 1; padding: 12px; border-radius: 10px; border: 1.5px dashed var(--border);
+    background: var(--bg); cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .photo-btn:active { background: var(--primary-light); border-color: var(--primary); }
+  .photo-btn svg { width: 24px; height: 24px; }
+  .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .photo-thumb {
+    aspect-ratio: 1; border-radius: 8px; overflow: hidden; position: relative;
+    background: var(--bg); border: 1px solid var(--border);
+  }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-thumb .del-photo {
+    position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6);
+    border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px;
+  }
+
+  /* Later photos table */
+  .later-photos { display: flex; flex-direction: column; gap: 8px; }
+  .later-photo-row {
+    background: var(--bg); border-radius: 8px; padding: 10px; display: flex; gap: 8px; align-items: flex-start;
+  }
+  .later-photo-row .lp-inputs { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .later-photo-row .del-later {
+    background: var(--danger-light); border: none; border-radius: 6px; padding: 6px 8px;
+    color: var(--danger); cursor: pointer; font-size: 13px; font-weight: 700; align-self: flex-end;
+  }
+  .add-later-btn {
+    background: none; border: 1.5px dashed var(--border); border-radius: 8px;
+    padding: 10px; font-size: 13px; font-weight: 600; color: var(--primary); cursor: pointer;
+    width: 100%; text-align: center;
+  }
+
+  /* Panel footer */
+  .panel-footer {
+    padding: 12px 16px 16px; border-top: 1px solid var(--border);
+    display: flex; gap: 10px; background: var(--white);
+    flex-shrink: 0; /* never compress — always visible */
+  }
+  .btn {
+    flex: 1; padding: 13px; border-radius: 10px; border: none; font-size: 15px;
+    font-weight: 700; cursor: pointer; transition: all 0.15s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-secondary { background: var(--bg); color: var(--text-muted); }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-sm { flex: none; padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+
+  /* ── RECORDS SCREEN ── */
+  #screen-records { overflow-y: auto; padding: 12px; }
+  .records-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .records-header h2 { flex: 1; font-size: 18px; font-weight: 700; }
+  .record-count { font-size: 13px; color: var(--text-muted); }
+  .record-card {
+    overflow: hidden; /* stop long addresses or button rows scrolling the page sideways */
+    background: var(--white); border-radius: var(--radius); padding: 14px;
+    margin-bottom: 10px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+    cursor: pointer; transition: box-shadow 0.15s;
+  }
+  .record-card:active { box-shadow: var(--shadow); }
+  .record-card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .damage-badge {
+    border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+  }
+  .badge-none { background: #ecf0f1; color: #7f8c8d; }
+  .badge-1 { background: #d5f5e3; color: #1e8449; }
+  .badge-2 { background: #fef9e7; color: #d4ac0d; }
+  .badge-3 { background: #fdebd0; color: #ca6f1e; }
+  .badge-4 { background: #fadbd8; color: #c0392b; }
+  .badge-5 { background: #e8daef; color: #7d3c98; }
+  .record-title { font-size: 15px; font-weight: 700; flex: 1; }
+  .record-meta { font-size: 12px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 6px; }
+  .record-meta span { display: flex; align-items: center; gap: 3px; }
+  .record-actions {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
+  }
+  /* Edit takes the full first row; Map and Delete share the second.
+     Without this the three buttons overflow a narrow phone screen and
+     Delete is pushed out of view. */
+  .record-actions .btn-sm { flex: 1 1 auto; min-width: 0; white-space: nowrap; }
+  .record-actions .ra-edit { flex: 1 1 100%; }
+  .record-actions .ra-delete { flex: 0 0 auto; }
+
+  /* ── EXPORT SCREEN ── */
+  #screen-export { overflow-y: auto; padding: 16px; }
+  .export-card {
+    background: var(--white); border-radius: var(--radius); padding: 20px;
+    margin-bottom: 12px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+  }
+  .export-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .export-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+  .export-icon { font-size: 32px; margin-bottom: 10px; }
+  .stat-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .stat-box {
+    flex: 1; background: var(--primary-light); border-radius: 10px; padding: 12px;
+    text-align: center;
+  }
+  .stat-box .stat-num { font-size: 26px; font-weight: 800; color: var(--primary); }
+  .stat-box .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+
+  /* ── SETTINGS SCREEN ── */
+  #screen-settings { overflow-y: auto; padding: 16px; }
+  .settings-section { margin-bottom: 20px; }
+  .settings-section h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 10px; }
+  .settings-card {
+    background: var(--white); border-radius: var(--radius); padding: 16px;
+    box-shadow: var(--shadow-sm); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px;
+  }
+
+  /* ── SETUP OVERLAY ── */
+  #setup-overlay {
+    position: fixed; inset: 0; background: var(--primary); z-index: 2000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 32px 24px;
+  }
+  #setup-overlay.hidden { display: none; }
+  .setup-logo { font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 4px; letter-spacing: -1px; }
+  .setup-logo span { color: #7dd3f0; }
+  .setup-sub { font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 32px; }
+  .setup-card {
+    background: #fff; border-radius: 16px; padding: 24px; width: 100%; max-width: 420px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .setup-card h2 { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: calc(var(--bottomnav-h) + 16px); left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: #fff; padding: 10px 20px; border-radius: 24px;
+    font-size: 14px; font-weight: 600; z-index: 3000; opacity: 0;
+    transition: all 0.25s; pointer-events: none; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Leaflet marker colors */
+  .marker-pin {
+    width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+    border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .mp-none { background: #95a5a6; }
+  .mp-1 { background: #2ecc71; }
+  .mp-2 { background: #f1c40f; }
+  .mp-3 { background: #e67e22; }
+  .mp-4 { background: #e74c3c; }
+  .mp-5 { background: #8e44ad; }
+  .mp-pending { background: var(--primary); }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+
+  /* Scroll padding for forms */
+  .form-page { padding-bottom: 24px; }
+
+  /* Responsive */
+  @media (min-width: 768px) {
+    #form-panel { max-width: 480px; left: 50%; transform: translateX(-50%) translateY(100%); right: auto; border-radius: 20px 20px 0 0; bottom: var(--bottomnav-h); }
+    #form-panel.open { transform: translateX(-50%) translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP OVERLAY ══ -->
+<div id="setup-overlay">
+  <div class="setup-logo">Field<span>Survey</span></div>
+  <div class="setup-sub">Damage Assessment & Field Inspection</div>
+  <div class="setup-card">
+    <h2>Session Setup</h2>
+    <div class="field-group">
+      <label class="field-label">Inspector Name <span class="req">*</span></label>
+      <input class="field-input" id="setup-name" placeholder="e.g. Özgür Yurdakul" type="text">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Inspector ID</label>
+      <input class="field-input" id="setup-id" placeholder="e.g. INS-001" type="text">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Organization</label>
+      <input class="field-input" id="setup-org" placeholder="e.g. University of Pardubice" type="text">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Mission Name <span class="req">*</span></label>
+      <input class="field-input" id="setup-mission" placeholder="e.g. Flood Assessment 2026" type="text">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Default Damage Scale</label>
+      <select class="field-input" id="setup-scale">
+        <option value="none">None (inventory only)</option>
+        <option value="ems98" selected>EMS-98</option>
+        <option value="hazus">HAZUS-MH</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">📁 Photo Save Folder <span style="font-size:11px;color:var(--text-muted);font-weight:400;">(optional — Chrome/Edge only)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div id="setup-folder-name" style="flex:1;font-size:12px;color:var(--text-muted);background:var(--bg);border-radius:8px;padding:8px 10px;border:1.5px solid var(--border);">No folder selected</div>
+        <button class="btn btn-secondary btn-sm" onclick="pickPhotoFolder('setup-folder-name')" style="white-space:nowrap;">Browse…</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">When set, photos are automatically saved to this folder every time a record is submitted.</div>
+    </div>
+    <div id="setup-continue-hint" style="font-size:12px;color:var(--text-muted);text-align:center;background:var(--bg);border-radius:8px;padding:8px;display:none;">
+      ↑ Pre-filled from your last session — edit or tap Start to continue
+    </div>
+    <button class="btn btn-primary" onclick="startSession()" style="margin-top:4px">▶ Start Session</button>
+  </div>
+</div>
+
+<!-- ══ TOP BAR ══ -->
+<div id="topbar">
+  <div class="logo">Field<span>Survey</span></div>
+  <div class="mission-label" id="tb-mission">—</div>
+  <div class="inspector-badge" id="tb-inspector">—</div>
+</div>
+
+<!-- ══ SCREENS ══ -->
+
+<!-- MAP -->
+<div class="screen active" id="screen-map">
+  <div id="map"></div>
+  <div id="osm-hint">
+    📍 Tap the map to set location
+    <button onclick="cancelPickMode()" style="background:rgba(255,255,255,0.25);border:none;border-radius:12px;color:#fff;padding:2px 10px;font-size:12px;cursor:pointer;font-weight:600;margin-left:6px;">← Back to form</button>
+  </div>
+  <button id="map-locate" onclick="locateMe()" title="My location">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/><circle cx="12" cy="12" r="10" stroke-dasharray="2 4"/></svg>
+  </button>
+  <button id="map-fab" onclick="startNewRecord()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    New Record
+  </button>
+</div>
+
+<!-- RECORDS -->
+<div class="screen" id="screen-records">
+  <div class="records-header">
+    <h2>Records</h2>
+    <span class="record-count" id="rec-count">0 records</span>
+  </div>
+  <div id="records-list"></div>
+</div>
+
+<!-- EXPORT -->
+<div class="screen" id="screen-export">
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num" id="exp-count">0</div><div class="stat-label">Records</div></div>
+    <div class="stat-box"><div class="stat-num" id="exp-photos">0</div><div class="stat-label">Photos</div></div>
+    <div class="stat-box"><div class="stat-num" id="exp-inspector">1</div><div class="stat-label">Inspector</div></div>
+  </div>
+  <div class="export-card">
+    <div class="export-icon">📊</div>
+    <h3>Export to XLSX</h3>
+    <p>Full spreadsheet with all fields, damage grades, photo references, and GPS coordinates. Ready for Excel or SPSS.</p>
+    <button class="btn btn-primary" onclick="exportXLSX()">Download XLSX</button>
+  </div>
+  <div class="export-card">
+    <div class="export-icon">🗺️</div>
+    <h3>Export to GeoJSON</h3>
+    <p>Geographic data file compatible with QGIS, ArcGIS, and any GIS platform. Each record is a georeferenced feature.</p>
+    <button class="btn btn-primary" onclick="exportGeoJSON()">Download GeoJSON</button>
+  </div>
+  <div class="export-card">
+    <div class="export-icon">📋</div>
+    <h3>Export to CSV</h3>
+    <p>Flat comma-separated file for database import, R, Python, or SPSS analysis.</p>
+    <button class="btn btn-primary" onclick="exportCSV()">Download CSV</button>
+  </div>
+  <div class="export-card">
+    <div class="export-icon">🗺️+📷</div>
+    <h3>GeoJSON with Photos</h3>
+    <p>Self-contained GeoJSON with all fields <strong>and photos embedded as base64</strong>. Larger file but fully portable — no separate photo folder needed.</p>
+    <button class="btn btn-primary" onclick="exportGeoJSONWithPhotos()">Download GeoJSON + Photos</button>
+  </div>
+  <div class="export-card" style="border-color: var(--danger);">
+    <div class="export-icon">🗑️</div>
+    <h3>Clear All Records</h3>
+    <p>Permanently delete all records from this device. Export first!</p>
+    <button class="btn btn-danger" onclick="clearAllRecords()">Clear All Records</button>
+  </div>
+</div>
+
+<!-- SESSION -->
+<div class="screen" id="screen-session" style="overflow-y:auto;padding:16px;">
+
+  <div style="margin-bottom:16px;">
+    <div style="font-size:20px;font-weight:800;color:var(--text);">Session Manager</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Save your work or load files from other inspectors</div>
+  </div>
+
+  <!-- SAVE -->
+  <div style="background:var(--white);border-radius:var(--radius);padding:20px;margin-bottom:12px;box-shadow:var(--shadow-sm);border:1.5px solid var(--primary);">
+    <div style="font-size:28px;margin-bottom:8px;">💾</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px;">Save Session</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">
+      Exports <strong>all your records and photos</strong> into a single <code>.fieldsurveyjson</code> file on your device.
+      Use this at the end of each field day to back up your work and share with the team coordinator.
+    </div>
+    <button class="btn btn-primary" onclick="saveFullSession()">💾 Save Session File</button>
+  </div>
+
+  <!-- LOAD & MERGE -->
+  <div style="background:var(--white);border-radius:var(--radius);padding:20px;margin-bottom:12px;box-shadow:var(--shadow-sm);border:1.5px solid var(--border);">
+    <div style="font-size:28px;margin-bottom:8px;">📂</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px;">Load &amp; Merge</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;line-height:1.6;">
+      Loads a <code>.fieldsurveyjson</code> file and <strong>adds its records to your existing ones</strong>.
+      Records that already exist (same ID) are skipped — no duplicates.
+    </div>
+    <div style="background:var(--primary-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--primary);margin-bottom:14px;line-height:1.6;">
+      ✅ <strong>Use this</strong> when combining files from multiple inspectors at end of day.
+      Load each inspector's file one by one — all records accumulate safely.
+    </div>
+    <button class="btn btn-primary" onclick="document.getElementById('load-session-input').click()">📂 Load &amp; Merge</button>
+    <input type="file" id="load-session-input" accept=".fieldsurveyjson,.json" style="display:none" onchange="loadFullSession(this, false)">
+  </div>
+
+  <!-- LOAD & REPLACE -->
+  <div style="background:var(--white);border-radius:var(--radius);padding:20px;margin-bottom:12px;box-shadow:var(--shadow-sm);border:1.5px solid var(--border);">
+    <div style="font-size:28px;margin-bottom:8px;">🔄</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px;">Load &amp; Replace</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;line-height:1.6;">
+      Loads a <code>.fieldsurveyjson</code> file and <strong>deletes all current records first</strong>, then loads the file fresh.
+    </div>
+    <div style="background:var(--danger-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--danger);margin-bottom:14px;line-height:1.6;">
+      ⚠️ <strong>Use this</strong> when restoring a known good session on a fresh device, or when you want to start clean from a saved file.
+      All current records will be permanently deleted before loading.
+    </div>
+    <button class="btn btn-danger" onclick="loadSessionReplace()">🔄 Load &amp; Replace</button>
+    <input type="file" id="load-session-replace-input" accept=".fieldsurveyjson,.json" style="display:none" onchange="loadFullSession(this, true)">
+  </div>
+
+  <!-- STATUS -->
+  <div id="session-status" style="display:none;background:var(--success-light);border:1.5px solid var(--success);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;color:var(--success);margin-bottom:12px;"></div>
+
+</div>
+
+<!-- SETTINGS -->
+<div class="screen" id="screen-settings">
+
+  <div class="settings-section">
+    <h3>Inspector</h3>
+    <div class="settings-card">
+      <div class="field-group">
+        <label class="field-label">Inspector Name</label>
+        <input class="field-input" id="set-name" type="text">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Inspector ID</label>
+        <input class="field-input" id="set-id" type="text">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Organization</label>
+        <input class="field-input" id="set-org" type="text">
+      </div>
+    </div>
+  </div>
+  <div class="settings-section">
+    <h3>Photo Save Folder</h3>
+    <div class="settings-card">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">Photos are automatically saved here when a record is submitted. Works on Chrome and Edge only.</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <div id="set-folder-name" style="flex:1;font-size:12px;color:var(--text-muted);background:var(--bg);border-radius:8px;padding:8px 10px;border:1.5px solid var(--border);word-break:break-all;">No folder selected</div>
+        <button class="btn btn-secondary btn-sm" onclick="pickPhotoFolder('set-folder-name')" style="white-space:nowrap;">Browse…</button>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="clearPhotoFolder()" style="color:var(--danger);">✕ Clear Folder</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <h3>Mission</h3>
+    <div class="settings-card">
+      <div class="field-group">
+        <label class="field-label">Mission Name</label>
+        <input class="field-input" id="set-mission" type="text">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Default Damage Scale</label>
+        <select class="field-input" id="set-scale">
+          <option value="none">None (inventory only)</option>
+          <option value="ems98">EMS-98</option>
+          <option value="hazus">HAZUS-MH</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="saveSettings()" style="align-self:flex-start">Save Settings</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <h3>Session</h3>
+    <div class="settings-card">
+      <div style="font-size:13px;color:var(--text-muted);">Start a new session to change inspector, mission name, or damage scale. Your existing records are not deleted.</div>
+      <button class="btn btn-accent btn-sm" onclick="newSession()" style="align-self:flex-start;margin-top:4px;">🔄 Start New Session</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <h3>Photo Compression</h3>
+    <div class="settings-card">
+      <div class="field-group">
+        <label class="field-label">Max Resolution (px)</label>
+        <div class="field-hint">Longest side — applied when photo is added</div>
+        <select class="field-input" id="set-max-res">
+          <option value="800">800px — small (fast, ~50KB)</option>
+          <option value="1280">1280px — medium (~150KB)</option>
+          <option value="1920" selected>1920px — full HD (~350KB)</option>
+          <option value="2560">2560px — high (~600KB)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">JPEG Quality</label>
+        <div class="slider-row">
+          <input type="range" id="set-quality" min="0.3" max="1.0" step="0.05" value="0.75"
+            oninput="document.getElementById('set-quality-val').textContent=Math.round(this.value*100)+'%'">
+          <span class="slider-val" id="set-quality-val">75%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="settings-section">
+    <h3>About</h3>
+    <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
+      <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
+      <div>Map: OpenStreetMap © contributors</div>
+      <div>Data stored locally on this device (IndexedDB)</div>
+      <div>No internet required for core functions</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BOTTOM NAV ══ -->
+<div id="bottomnav">
+  <button class="nav-btn active" onclick="switchTab('map',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+    Map
+  </button>
+  <button class="nav-btn" onclick="switchTab('records',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    Records
+  </button>
+  <button class="nav-btn" onclick="switchTab('export',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+    Export
+  </button>
+  <button class="nav-btn" onclick="switchTab('session',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+    Session
+  </button>
+  <button class="nav-btn" onclick="switchTab('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    Settings
+  </button>
+</div>
+
+<!-- ══ FORM PANEL ══ -->
+<div id="panel-overlay" onclick="closePanel()"></div>
+<div id="form-panel">
+  <div class="panel-handle"></div>
+  <div class="panel-header">
+    <h2 id="panel-title">New Record</h2>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+
+  <!-- Page indicator -->
+  <div class="page-indicator" id="page-indicator"></div>
+
+  <!-- Form pages container -->
+  <div class="form-pages" id="form-pages">
+
+    <!-- PAGE 1: LOCATION -->
+    <div class="form-page active" id="page-0">
+      <div class="section-title">📍 Location</div>
+
+      <div class="location-card" id="loc-card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <div class="loc-text">
+          <div class="loc-coords" id="loc-coords">No location set</div>
+          <div class="loc-address" id="loc-address">Tap 📍 or use GPS button</div>
+          <div class="loc-osm" id="loc-osm-text" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="photo-actions">
+        <button class="photo-btn" onclick="locateMe()" style="border-style:solid; border-color:var(--primary); color:var(--primary);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+          Use GPS
+        </button>
+        <button class="photo-btn" onclick="tapOnMap()" style="border-style:solid;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Tap Map
+        </button>
+      </div>
+
+      <div class="field-group" id="osm-card-container" style="display:none">
+        <div class="osm-card" id="osm-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+          <span id="osm-card-text">OSM Feature linked</span>
+          <button onclick="clearOSM()" style="background:none;border:none;cursor:pointer;color:inherit;margin-left:auto;font-size:14px;">✕</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Manual Address / Description</label>
+        <input class="field-input" id="f-address" type="text" placeholder="Street name, building number, landmark…">
+      </div>
+    </div>
+
+    <!-- PAGE 2: ASSET -->
+    <div class="form-page" id="page-1">
+      <div class="section-title">🏗 Asset Information</div>
+      <div class="field-group">
+        <label class="field-label">Asset Type <span class="req">*</span></label>
+        <div class="chip-group" id="asset-chips">
+          <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('building')">Building</div>
+          <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('road')">Road</div>
+          <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('bridge')">Bridge</div>
+          <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('retaining-wall')">Retaining Wall</div>
+          <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('infrastructure')">Infrastructure</div>
+          <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('other')">Other</div>
+        </div>
+        <input type="hidden" id="f-asset-type">
+      </div>
+      <!-- Dynamic asset fields — shown/hidden by switchAssetFields() -->
+
+      <!-- BUILDING -->
+      <div class="asset-fields" id="af-building" style="display:none;flex-direction:column;gap:12px;">
+        <div class="field-group">
+          <label class="field-label">Building Use</label>
+          <select class="field-input" id="f-building-use">
+            <option value="">— Select —</option>
+            <option>Residential</option><option>Commercial</option><option>Industrial</option>
+            <option>Educational</option><option>Healthcare</option><option>Religious</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Number of Floors</label>
+          <input class="field-input" id="f-floors" type="number" min="1" max="200" placeholder="e.g. 4">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Construction Type</label>
+          <select class="field-input" id="f-construction">
+            <option value="">— Select —</option>
+            <option>RC Frame</option><option>Masonry (Unreinforced)</option><option>Masonry (Reinforced)</option>
+            <option>Steel Frame</option><option>Timber</option><option>Mixed</option><option>Unknown</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Year of Construction (approx.)</label>
+          <input class="field-input" id="f-year-building" type="number" min="1800" max="2030" placeholder="e.g. 1985">
+        </div>
+      </div>
+
+      <!-- ROAD -->
+      <div class="asset-fields" id="af-road" style="display:none;flex-direction:column;gap:12px;">
+        <div class="field-group">
+          <label class="field-label">Road Type</label>
+          <select class="field-input" id="f-road-type">
+            <option value="">— Select —</option>
+            <option>Motorway</option><option>Primary Road</option><option>Secondary Road</option>
+            <option>Urban Street</option><option>Rural Road</option><option>Unpaved / Track</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Surface Type</label>
+          <select class="field-input" id="f-road-surface">
+            <option value="">— Select —</option>
+            <option>Asphalt</option><option>Concrete</option><option>Cobblestone</option>
+            <option>Gravel</option><option>Unpaved</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Number of Lanes</label>
+          <input class="field-input" id="f-road-lanes" type="number" min="1" max="20" placeholder="e.g. 2">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Segment Length (m)</label>
+          <input class="field-input" id="f-road-length" type="number" min="0" placeholder="e.g. 150">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Speed Limit (km/h)</label>
+          <input class="field-input" id="f-road-speed" type="number" min="0" max="200" placeholder="e.g. 50">
+        </div>
+      </div>
+
+      <!-- BRIDGE -->
+      <div class="asset-fields" id="af-bridge" style="display:none;flex-direction:column;gap:12px;">
+        <div class="field-group">
+          <label class="field-label">Bridge Type</label>
+          <select class="field-input" id="f-bridge-type">
+            <option value="">— Select —</option>
+            <option>Beam / Girder</option><option>Arch</option><option>Truss</option>
+            <option>Cable-Stayed</option><option>Suspension</option><option>Slab</option>
+            <option>Box Girder</option><option>Culvert</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Number of Spans</label>
+          <input class="field-input" id="f-bridge-spans" type="number" min="1" max="500" placeholder="e.g. 3">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Max Span Length (m)</label>
+          <input class="field-input" id="f-bridge-span-length" type="number" min="0" placeholder="e.g. 25.0">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Total Length (m)</label>
+          <input class="field-input" id="f-bridge-length" type="number" min="0" placeholder="e.g. 75.0">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Deck Material</label>
+          <select class="field-input" id="f-bridge-material">
+            <option value="">— Select —</option>
+            <option>Reinforced Concrete</option><option>Prestressed Concrete</option>
+            <option>Steel</option><option>Composite (Steel + RC)</option>
+            <option>Masonry</option><option>Timber</option><option>Unknown</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Year of Construction (approx.)</label>
+          <input class="field-input" id="f-year-bridge" type="number" min="1800" max="2030" placeholder="e.g. 1972">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Load Capacity (tonnes)</label>
+          <input class="field-input" id="f-bridge-capacity" type="number" min="0" placeholder="e.g. 40">
+        </div>
+      </div>
+
+      <!-- RETAINING WALL -->
+      <div class="asset-fields" id="af-retaining-wall" style="display:none;flex-direction:column;gap:12px;">
+        <div class="field-group">
+          <label class="field-label">Wall Type</label>
+          <select class="field-input" id="f-wall-type">
+            <option value="">— Select —</option>
+            <option>Gravity Wall</option><option>Cantilever RC</option><option>Counterfort</option>
+            <option>Sheet Pile</option><option>Gabion</option><option>Mechanically Stabilised Earth</option>
+            <option>Natural Stone</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Wall Height (m)</label>
+          <input class="field-input" id="f-wall-height" type="number" min="0" placeholder="e.g. 4.5">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Wall Length (m)</label>
+          <input class="field-input" id="f-wall-length" type="number" min="0" placeholder="e.g. 30">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Material</label>
+          <select class="field-input" id="f-wall-material">
+            <option value="">— Select —</option>
+            <option>Reinforced Concrete</option><option>Plain Concrete</option>
+            <option>Masonry</option><option>Steel</option><option>Timber</option><option>Earth / Fill</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- INFRASTRUCTURE -->
+      <div class="asset-fields" id="af-infrastructure" style="display:none;flex-direction:column;gap:12px;">
+        <div class="field-group">
+          <label class="field-label">Infrastructure Type</label>
+          <select class="field-input" id="f-infra-type">
+            <option value="">— Select —</option>
+            <option>Water Supply</option><option>Sewage / Drainage</option><option>Electrical Grid</option>
+            <option>Telecommunications</option><option>Gas Pipeline</option><option>Flood Defence</option>
+            <option>Embankment / Levee</option><option>Tunnel</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Operational Status</label>
+          <select class="field-input" id="f-infra-status">
+            <option value="">— Select —</option>
+            <option>Fully Operational</option><option>Partially Operational</option>
+            <option>Out of Service</option><option>Unknown</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- OTHER -->
+      <div class="asset-fields" id="af-other" style="display:none;flex-direction:column;gap:12px;">
+        <div class="field-group">
+          <label class="field-label">Description</label>
+          <input class="field-input" id="f-other-desc" type="text" placeholder="Describe the asset type…">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Asset Reference / ID</label>
+        <input class="field-input" id="f-asset-ref" type="text" placeholder="e.g. Bridge B-247, Road segment R-12…">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Damage Scale</label>
+        <select class="field-input" id="f-scale-select" onchange="switchScale(this.value)">
+          <option value="none">None (inventory only)</option>
+          <option value="ems98">EMS-98</option>
+          <option value="hazus">HAZUS-MH</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- PAGE 3: DAMAGE -->
+    <div class="form-page" id="page-2">
+      <div class="section-title">⚠️ Damage Assessment</div>
+
+      <!-- NONE -->
+      <div class="scale-section active" id="scale-none">
+        <p style="font-size:14px;color:var(--text-muted)">No damage assessment for this record. Switch damage scale on the previous page to assess.</p>
+      </div>
+
+      <!-- EMS-98 -->
+      <div class="scale-section" id="scale-ems98">
+        <div class="scale-title">EMS-98 Classification</div>
+        <div class="field-group">
+          <label class="field-label">Damage Grade</label>
+          <div class="chip-group" id="ems98-chips">
+            <div class="chip damage-1" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D1 — Negligible</div>
+            <div class="chip damage-2" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D2 — Slight</div>
+            <div class="chip damage-3" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D3 — Moderate</div>
+            <div class="chip damage-4" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D4 — Heavy</div>
+            <div class="chip damage-5" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D5 — Destruction</div>
+          </div>
+          <input type="hidden" id="f-ems-grade">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Structural Damage</label>
+          <select class="field-input" id="f-ems-structural">
+            <option value="">— Select —</option>
+            <option>None</option><option>Minor cracking</option><option>Cracks in walls</option>
+            <option>Large cracks / partial collapse</option><option>Total collapse</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Non-Structural Damage</label>
+          <select class="field-input" id="f-ems-nonstructural">
+            <option value="">— Select —</option>
+            <option>None</option><option>Fine cracks in plaster</option><option>Fallen plaster</option>
+            <option>Damaged partitions</option><option>Extensive damage</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Habitability</label>
+          <div class="chip-group" id="habit-chips">
+            <div class="chip damage-1" onclick="selectChip(this,'habit-chips','f-habitability')">Usable</div>
+            <div class="chip damage-3" onclick="selectChip(this,'habit-chips','f-habitability')">Restricted</div>
+            <div class="chip damage-4" onclick="selectChip(this,'habit-chips','f-habitability')">Unusable</div>
+          </div>
+          <input type="hidden" id="f-habitability">
+        </div>
+      </div>
+
+      <!-- HAZUS -->
+      <div class="scale-section" id="scale-hazus">
+        <div class="scale-title">HAZUS-MH Classification</div>
+        <div class="field-group">
+          <label class="field-label">Damage State</label>
+          <div class="chip-group" id="hazus-chips">
+            <div class="chip damage-none" onclick="selectChip(this,'hazus-chips','f-hazus-state')">None</div>
+            <div class="chip damage-1" onclick="selectChip(this,'hazus-chips','f-hazus-state')">Slight</div>
+            <div class="chip damage-2" onclick="selectChip(this,'hazus-chips','f-hazus-state')">Moderate</div>
+            <div class="chip damage-3" onclick="selectChip(this,'hazus-chips','f-hazus-state')">Extensive</div>
+            <div class="chip damage-4" onclick="selectChip(this,'hazus-chips','f-hazus-state')">Complete</div>
+          </div>
+          <input type="hidden" id="f-hazus-state">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Loss Ratio Estimate (%)</label>
+          <div class="slider-row">
+            <input type="range" id="f-hazus-loss" min="0" max="100" value="0" oninput="document.getElementById('hazus-loss-val').textContent=this.value+'%'">
+            <span class="slider-val" id="hazus-loss-val">0%</span>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Functionality (%)</label>
+          <div class="slider-row">
+            <input type="range" id="f-hazus-func" min="0" max="100" value="100" oninput="document.getElementById('hazus-func-val').textContent=this.value+'%'">
+            <span class="slider-val" id="hazus-func-val">100%</span>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Occupancy Post-Disaster</label>
+          <select class="field-input" id="f-hazus-occupancy">
+            <option value="">— Select —</option>
+            <option>Inspected — No Restriction</option>
+            <option>Restricted Use</option>
+            <option>Unsafe — Do Not Enter</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- CUSTOM -->
+      <div class="scale-section" id="scale-custom">
+        <div class="scale-title">Custom Assessment</div>
+        <div class="field-group">
+          <label class="field-label">Overall Condition</label>
+          <div class="chip-group" id="custom-chips">
+            <div class="chip damage-1" onclick="selectChip(this,'custom-chips','f-custom-cond')">Good</div>
+            <div class="chip damage-2" onclick="selectChip(this,'custom-chips','f-custom-cond')">Fair</div>
+            <div class="chip damage-3" onclick="selectChip(this,'custom-chips','f-custom-cond')">Poor</div>
+            <div class="chip damage-4" onclick="selectChip(this,'custom-chips','f-custom-cond')">Critical</div>
+            <div class="chip damage-5" onclick="selectChip(this,'custom-chips','f-custom-cond')">Failed</div>
+          </div>
+          <input type="hidden" id="f-custom-cond">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Priority Action</label>
+          <select class="field-input" id="f-custom-action">
+            <option value="">— Select —</option>
+            <option>Monitor</option><option>Maintain</option><option>Repair</option>
+            <option>Emergency Repair</option><option>Demolish</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Custom Score (1–10)</label>
+          <div class="slider-row">
+            <input type="range" id="f-custom-score" min="1" max="10" value="5" oninput="document.getElementById('custom-score-val').textContent=this.value">
+            <span class="slider-val" id="custom-score-val">5</span>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Custom Field 1 Label</label>
+          <input class="field-input" id="f-custom-label1" type="text" placeholder="e.g. Crack width (mm)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Custom Field 1 Value</label>
+          <input class="field-input" id="f-custom-val1" type="text" placeholder="Value">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Custom Field 2 Label</label>
+          <input class="field-input" id="f-custom-label2" type="text" placeholder="e.g. Settlement (mm)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Custom Field 2 Value</label>
+          <input class="field-input" id="f-custom-val2" type="text" placeholder="Value">
+        </div>
+      </div>
+
+      <!-- Casualties (all scales) -->
+      <div class="divider"></div>
+      <div class="field-group">
+        <label class="field-label">Casualties / Affected Persons</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <div class="field-hint">Fatalities</div>
+            <input class="field-input" id="f-fatalities" type="number" min="0" placeholder="0">
+          </div>
+          <div>
+            <div class="field-hint">Injured</div>
+            <input class="field-input" id="f-injured" type="number" min="0" placeholder="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 4: PHOTOS -->
+    <div class="form-page" id="page-3">
+      <div class="section-title">📷 Photos</div>
+
+      <div class="field-group">
+        <label class="field-label">Capture Now (Camera / Gallery)</label>
+        <div class="field-hint">Opens camera on mobile — photos stored directly in this record</div>
+        <div class="photo-actions" style="margin-top:6px">
+          <button class="photo-btn" onclick="document.getElementById('cam-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Camera
+          </button>
+          <button class="photo-btn" onclick="document.getElementById('file-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            From Files
+          </button>
+        </div>
+        <input type="file" id="cam-input" accept="image/*" capture="environment" multiple style="display:none" onchange="addPhotosFromInput(this)">
+        <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="addPhotosFromInput(this)">
+        <div class="photo-grid" id="photo-grid"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field-group">
+        <label class="field-label">Add Later — Camera / File References</label>
+        <div class="field-hint">Log photos taken with a separate device (drone, DSLR, etc.) to be attached later in office</div>
+        <div class="later-photos" id="later-photos" style="margin-top:8px"></div>
+        <button class="add-later-btn" onclick="addLaterPhotoRow()" style="margin-top:8px">+ Add Camera / File Batch</button>
+      </div>
+    </div>
+
+    <!-- PAGE 5: NOTES & SUBMIT -->
+    <div class="form-page" id="page-4">
+      <div class="section-title">📝 Notes & Review</div>
+      <div class="field-group">
+        <label class="field-label">Field Notes</label>
+        <textarea class="field-input" id="f-notes" placeholder="Observations, hazards, recommendations, access notes…" rows="4"></textarea>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Urgency Level</label>
+        <div class="chip-group" id="urgency-chips">
+          <div class="chip damage-1" onclick="selectChip(this,'urgency-chips','f-urgency')">Low</div>
+          <div class="chip damage-2" onclick="selectChip(this,'urgency-chips','f-urgency')">Medium</div>
+          <div class="chip damage-3" onclick="selectChip(this,'urgency-chips','f-urgency')">High</div>
+          <div class="chip damage-4" onclick="selectChip(this,'urgency-chips','f-urgency')">Critical</div>
+        </div>
+        <input type="hidden" id="f-urgency">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Follow-up Required?</label>
+        <div class="chip-group" id="followup-chips">
+          <div class="chip damage-1" onclick="selectChip(this,'followup-chips','f-followup')">No</div>
+          <div class="chip damage-3" onclick="selectChip(this,'followup-chips','f-followup')">Yes</div>
+        </div>
+        <input type="hidden" id="f-followup">
+      </div>
+
+      <!-- Summary card -->
+      <div style="background:var(--primary-light);border:1.5px solid var(--primary);border-radius:10px;padding:14px;font-size:13px;line-height:1.8;">
+        <strong>Review before submitting:</strong>
+        <div id="submit-summary" style="margin-top:6px;color:var(--text-muted);">—</div>
+      </div>
+    </div>
+
+  </div><!-- /form-pages -->
+
+  <!-- Panel footer nav -->
+  <div class="panel-footer">
+    <button class="btn btn-secondary" id="btn-prev" onclick="prevPage()" style="display:none">← Back</button>
+    <button class="btn btn-primary" id="btn-next" onclick="nextPage()">Next →</button>
+    <button class="btn btn-accent" id="btn-submit" onclick="submitRecord()" style="display:none">✓ Save Record</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let session = {
+  name: '', id: '', org: '', mission: '',
+  scale: 'ems98', date: new Date().toISOString().split('T')[0]
+};
+let currentPage = 0;
+const TOTAL_PAGES = 5;
+let editingId = null;
+let currentPhotos = []; // [{id, dataUrl}]
+let currentLaterPhotos = []; // [{camera, fileRange}]
+let pendingLat = null, pendingLng = null;
+let pendingOSM = null; // {id, type, name}
+let mapClickMode = false;
+let userMarker = null;
+let recordMarkers = {};
+let map;
+let DB;
+
+// ══════════════════════════════════════════════
+// INDEXEDDB
+// ══════════════════════════════════════════════
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('FieldSurveyDB', 3);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('records')) {
+        db.createObjectStore('records', { keyPath: 'id' });
+      }
+      // store for the persisted photo-folder handle
+      if (!db.objectStoreNames.contains('handles')) {
+        db.createObjectStore('handles');
+      }
+    };
+    req.onsuccess = e => {
+      DB = e.target.result;
+      // If another tab later upgrades the DB, close ours so it isn't left stale
+      DB.onversionchange = () => { try { DB.close(); } catch(e) {} };
+      resolve();
+    };
+    req.onerror = () => reject(req.error);
+    // FIX: an upgrade blocked by another open tab used to hang startup forever
+    req.onblocked = () => {
+      showToast('Close other tabs of this app, then reload');
+      reject(new Error('IndexedDB upgrade blocked by another tab'));
+    };
+  });
+}
+function dbGetAll() {
+  return new Promise((resolve, reject) => {
+    const tx = DB.transaction('records', 'readonly');
+    const req = tx.objectStore('records').getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function dbPut(record) {
+  return new Promise((resolve, reject) => {
+    const tx = DB.transaction('records', 'readwrite');
+    const req = tx.objectStore('records').put(record);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+function dbDelete(id) {
+  return new Promise((resolve, reject) => {
+    const tx = DB.transaction('records', 'readwrite');
+    const req = tx.objectStore('records').delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+function dbClear() {
+  return new Promise((resolve, reject) => {
+    const tx = DB.transaction('records', 'readwrite');
+    const req = tx.objectStore('records').clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ══════════════════════════════════════════════
+// SETUP
+// ══════════════════════════════════════════════
+function startSession() {
+  const name = document.getElementById('setup-name').value.trim();
+  const mission = document.getElementById('setup-mission').value.trim();
+  if (!name || !mission) { showToast('Please fill in Name and Mission'); return; }
+  session.name = name;
+  session.id = document.getElementById('setup-id').value.trim();
+  session.org = document.getElementById('setup-org').value.trim();
+  session.mission = mission;
+  session.scale = document.getElementById('setup-scale').value;
+  saveSessionToStorage();
+  updateTopbar();
+  document.getElementById('setup-overlay').classList.add('hidden');
+  document.getElementById('f-scale-select').value = session.scale;
+  switchScale(session.scale);
+  syncSettingsFields();
+}
+
+function saveSessionToStorage() {
+  localStorage.setItem('fs_session', JSON.stringify(session));
+}
+
+function loadSession() {
+  const s = localStorage.getItem('fs_session');
+  if (s) {
+    const saved = JSON.parse(s);
+    if (saved.name && saved.mission) {
+      session = saved;
+      updateTopbar();
+      document.getElementById('setup-overlay').classList.add('hidden');
+      document.getElementById('f-scale-select').value = session.scale || 'ems98';
+      switchScale(session.scale || 'ems98');
+      syncSettingsFields();
+      return;
+    }
+  }
+  // First use — show setup
+  document.getElementById('setup-overlay').classList.remove('hidden');
+}
+
+function updateTopbar() {
+  document.getElementById('tb-mission').textContent = session.mission || '—';
+  document.getElementById('tb-inspector').textContent = session.name || '—';
+}
+
+function syncSettingsFields() {
+  document.getElementById('set-name').value = session.name;
+  document.getElementById('set-id').value = session.id;
+  document.getElementById('set-org').value = session.org;
+  document.getElementById('set-mission').value = session.mission;
+  document.getElementById('set-scale').value = session.scale;
+}
+
+function saveSettings() {
+  session.name = document.getElementById('set-name').value.trim();
+  session.id = document.getElementById('set-id').value.trim();
+  session.org = document.getElementById('set-org').value.trim();
+  session.mission = document.getElementById('set-mission').value.trim();
+  session.scale = document.getElementById('set-scale').value;
+  saveSessionToStorage();
+  updateTopbar();
+  showToast('Settings saved');
+}
+
+function newSession() {
+  localStorage.removeItem('fs_session');
+  session = { name: '', id: '', org: '', mission: '', scale: 'ems98', date: new Date().toISOString().split('T')[0] };
+  ['setup-name','setup-id','setup-org','setup-mission'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('setup-scale').value = 'ems98';
+  document.getElementById('setup-overlay').classList.remove('hidden');
+}
+
+// ══════════════════════════════════════════════
+// MAP
+// ══════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([50.03, 15.78], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+  }).addTo(map);
+
+  map.on('click', function(e) {
+    if (mapClickMode) {
+      setPendingLocation(e.latlng.lat, e.latlng.lng);
+      reverseGeocode(e.latlng.lat, e.latlng.lng);
+      queryOSMFeature(e.latlng.lat, e.latlng.lng);
+      exitMapClickMode();
+      // Reopen form after pin is placed
+      setTimeout(() => openPanel(), 250);
+    }
+  });
+
+  // records are drawn by init() once the database is ready
+}
+
+function locateMe() {
+  if (!navigator.geolocation) { showToast('Geolocation not supported by this browser'); return; }
+  showToast('Getting GPS location…');
+  // If no form is open yet, prepare a new record
+  if (!document.getElementById('form-panel').classList.contains('open') && !editingId) {
+    editingId = null;
+    resetForm();
+    document.getElementById('panel-title').textContent = 'New Record';
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      setPendingLocation(lat, lng);
+      map.setView([lat, lng], 17);
+      reverseGeocode(lat, lng);
+      exitMapClickMode();
+      if (!document.getElementById('form-panel').classList.contains('open')) {
+        setTimeout(() => openPanel(), 300);
+      }
+    },
+    err => {
+      // Show specific error
+      const msgs = {
+        1: 'Location permission denied. Please allow location in browser settings.',
+        2: 'GPS signal not available. Trying IP-based location…',
+        3: 'Location request timed out. Trying IP-based location…'
+      };
+      showToast(msgs[err.code] || 'Could not get location (error ' + err.code + ')');
+      // Fallback to IP-based location for errors 2 and 3
+      if (err.code === 2 || err.code === 3) {
+        ipFallbackLocation();
+      }
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+}
+
+function ipFallbackLocation() {
+  fetch('https://ipapi.co/json/')
+    .then(r => r.json())
+    .then(d => {
+      if (d.latitude && d.longitude) {
+        showToast('Using approximate IP location (not GPS)');
+        setPendingLocation(d.latitude, d.longitude);
+        map.setView([d.latitude, d.longitude], 13);
+        reverseGeocode(d.latitude, d.longitude);
+        if (!document.getElementById('form-panel').classList.contains('open')) {
+          setTimeout(() => openPanel(), 300);
+        }
+      } else {
+        showToast('Could not determine location. Tap map to set manually.');
+      }
+    })
+    .catch(() => showToast('Could not determine location. Tap map to set manually.'));
+}
+
+function setPendingLocation(lat, lng) {
+  pendingLat = lat; pendingLng = lng;
+  document.getElementById('loc-coords').textContent = lat.toFixed(6) + ', ' + lng.toFixed(6);
+  document.getElementById('loc-address').textContent = 'Fetching address…';
+  if (userMarker) map.removeLayer(userMarker);
+  userMarker = L.marker([lat, lng], { icon: createPinIcon('pending'), draggable: true }).addTo(map);
+  userMarker.on('dragend', function(e) {
+    const p = e.target.getLatLng();
+    setPendingLocation(p.lat, p.lng);
+    reverseGeocode(p.lat, p.lng);
+  });
+}
+
+function reverseGeocode(lat, lng) {
+  fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+    .then(r => r.json())
+    .then(d => {
+      const addr = d.display_name || '';
+      document.getElementById('loc-address').textContent = addr.split(',').slice(0,3).join(', ');
+      if (!document.getElementById('f-address').value) {
+        document.getElementById('f-address').value = addr.split(',').slice(0,3).join(', ');
+      }
+    }).catch(() => { document.getElementById('loc-address').textContent = 'Address unavailable (offline)'; });
+}
+
+function queryOSMFeature(lat, lng) {
+  const r = 20;
+  const query = `[out:json][timeout:5];(way(around:${r},${lat},${lng});relation(around:${r},${lat},${lng}););out tags center 1;`;
+  fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query))
+    .then(r => r.json())
+    .then(d => {
+      if (d.elements && d.elements.length > 0) {
+        const el = d.elements[0];
+        const name = el.tags?.name || el.tags?.['addr:housenumber'] || el.tags?.highway || el.type;
+        pendingOSM = { id: el.id, type: el.type, name: name || 'OSM Feature' };
+        showOSMCard(pendingOSM);
+      }
+    }).catch(() => {});
+}
+
+function showOSMCard(osm) {
+  document.getElementById('osm-card-container').style.display = 'block';
+  document.getElementById('osm-card-text').textContent = `${osm.type}/${osm.id} — ${osm.name}`;
+  document.getElementById('loc-osm-text').textContent = `🔗 Linked: ${osm.name}`;
+  document.getElementById('loc-osm-text').style.display = 'block';
+}
+
+function clearOSM() {
+  pendingOSM = null;
+  document.getElementById('osm-card-container').style.display = 'none';
+  document.getElementById('loc-osm-text').style.display = 'none';
+}
+
+function tapOnMap() {
+  // Slide panel down temporarily, user taps map, panel reopens with location
+  document.getElementById('form-panel').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('open');
+  mapClickMode = true;
+  document.getElementById('map').style.cursor = 'crosshair';
+  document.getElementById('osm-hint').classList.add('active');
+  document.getElementById('map-fab').style.display = 'none';
+}
+
+function exitMapClickMode() {
+  mapClickMode = false;
+  document.getElementById('map').style.cursor = '';
+  document.getElementById('osm-hint').classList.remove('active');
+  document.getElementById('map-fab').style.display = 'flex';
+}
+
+function createPinIcon(colorClass) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="marker-pin mp-${colorClass}"></div>`,
+    iconSize: [30, 30], iconAnchor: [15, 28], popupAnchor: [0, -28]
+  });
+}
+
+function getDamageColorClass(record) {
+  const scale = record.damageScale;
+  if (scale === 'ems98') {
+    const g = record.emsGrade || '';
+    if (g.startsWith('D1')) return '1';
+    if (g.startsWith('D2')) return '2';
+    if (g.startsWith('D3')) return '3';
+    if (g.startsWith('D4')) return '4';
+    if (g.startsWith('D5')) return '5';
+  }
+  if (scale === 'hazus') {
+    const s = record.hazusState || '';
+    if (s === 'None') return 'none';
+    if (s === 'Slight') return '1';
+    if (s === 'Moderate') return '2';
+    if (s === 'Extensive') return '3';
+    if (s === 'Complete') return '4';
+  }
+  if (scale === 'custom') {
+    const c = record.customCondition || '';
+    if (c === 'Good') return '1';
+    if (c === 'Fair') return '2';
+    if (c === 'Poor') return '3';
+    if (c === 'Critical') return '4';
+    if (c === 'Failed') return '5';
+  }
+  return 'none';
+}
+
+async function loadRecordsOnMap() {
+  if (!DB) return;
+  const records = await dbGetAll();
+  records.forEach(r => addMarkerForRecord(r));
+  updateCounts(records);
+}
+
+function addMarkerForRecord(r) {
+  if (!r.lat || !r.lng) return;
+  const colorClass = getDamageColorClass(r);
+  if (recordMarkers[r.id]) map.removeLayer(recordMarkers[r.id]);
+  const badgeLabel = r.damageScale === 'ems98' ? (r.emsGrade || 'EMS-98')
+    : r.damageScale === 'hazus' ? (r.hazusState || 'HAZUS')
+    : r.damageScale === 'custom' ? (r.customCondition || 'Custom')
+    : 'No Scale';
+  const badgeColor = {'1':'#2ecc71','2':'#f1c40f','3':'#e67e22','4':'#e74c3c','5':'#8e44ad'}[colorClass] || '#95a5a6';
+  const popupHtml = `
+    <div style="min-width:220px;font-family:system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
+        <strong style="font-size:14px;color:#1a2332;">${r.assetType || 'Record'}</strong>
+        <span style="background:${badgeColor};color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap;">${badgeLabel}</span>
+      </div>
+      <div style="font-size:12px;color:#5a6a7a;line-height:1.8;">
+        <div>🆔 <strong>${r.id}</strong></div>
+        ${r.address ? `<div>🏠 ${r.address}</div>` : ''}
+        <div>📍 ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</div>
+        ${r.osmName ? `<div>🔗 ${r.osmName}</div>` : ''}
+        ${r.inspectorName ? `<div>👤 ${r.inspectorName}${r.inspectorId ? ' ('+r.inspectorId+')' : ''}</div>` : ''}
+        <div>🕐 ${r.timestamp ? r.timestamp.replace('T',' ').slice(0,16) : '—'}</div>
+        ${r.urgency ? `<div>🚨 Urgency: <strong>${r.urgency}</strong></div>` : ''}
+        ${r.notes ? `<div style="margin-top:4px;padding:4px 6px;background:#f0f4f8;border-radius:4px;">📝 ${r.notes.slice(0,80)}${r.notes.length>80?'…':''}</div>` : ''}
+        ${(r.photos?.length||0) > 0 ? `<div>📷 ${r.photos.length} photo(s)</div>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <button onclick="editRecord('${r.id}')" style="flex:1;padding:6px;background:#1a5f7a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">✏️ Edit</button>
+        <button onclick="flyAndClose('${r.id}')" style="flex:1;padding:6px;background:#f0f4f8;color:#1a2332;border:1px solid #d0dde8;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📋 Records</button>
+      </div>
+    </div>`;
+  const m = L.marker([r.lat, r.lng], { icon: createPinIcon(colorClass) })
+    .addTo(map)
+    .bindPopup(popupHtml, { maxWidth: 280 });
+  recordMarkers[r.id] = m;
+}
+
+// ══════════════════════════════════════════════
+// PANEL / FORM
+// ══════════════════════════════════════════════
+function startNewRecord() {
+  editingId = null;
+  resetForm();
+  document.getElementById('panel-title').textContent = 'New Record';
+  document.getElementById('f-scale-select').value = session.scale;
+  switchScale(session.scale);
+  goToPage(0);
+  openPanel();
+  // Auto-try GPS silently in background
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      setPendingLocation(pos.coords.latitude, pos.coords.longitude);
+      reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+      queryOSMFeature(pos.coords.latitude, pos.coords.longitude);
+    }, err => {
+      // Error code 1 = permission denied — don't fallback silently
+      if (err.code !== 1) ipFallbackLocation();
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+  }
+}
+
+function cancelPickMode() {
+  exitMapClickMode();
+  // Reopen the form panel (user cancelled map tap)
+  openPanel();
+}
+
+function openNewRecord() {
+  // Called after location is already set (from GPS or map tap)
+  document.getElementById('f-scale-select').value = session.scale;
+  switchScale(session.scale);
+  goToPage(0);
+  openPanel();
+}
+
+function openPanel() {
+  document.getElementById('panel-overlay').classList.add('open');
+  document.getElementById('form-panel').classList.add('open');
+  updatePageIndicator();
+}
+
+function closePanel() {
+  document.getElementById('panel-overlay').classList.remove('open');
+  document.getElementById('form-panel').classList.remove('open');
+  exitMapClickMode();
+}
+
+function resetForm() {
+  currentPhotos = [];
+  currentLaterPhotos = [];
+  pendingOSM = null;
+  document.getElementById('photo-grid').innerHTML = '';
+  document.getElementById('later-photos').innerHTML = '';
+  document.getElementById('loc-coords').textContent = 'No location set';
+  document.getElementById('loc-address').textContent = 'Tap 📍 or use GPS button';
+  document.getElementById('loc-osm-text').style.display = 'none';
+  document.getElementById('osm-card-container').style.display = 'none';
+  // Clear all inputs
+  document.querySelectorAll('.asset-fields').forEach(el => el.style.display = 'none');
+  ['f-address','f-asset-type','f-building-use','f-floors','f-construction','f-year-building','f-asset-ref',
+   'f-road-type','f-road-surface','f-road-lanes','f-road-length','f-road-speed',
+   'f-bridge-type','f-bridge-spans','f-bridge-span-length','f-bridge-length','f-bridge-material','f-year-bridge','f-bridge-capacity',
+   'f-wall-type','f-wall-height','f-wall-length','f-wall-material',
+   'f-infra-type','f-infra-status','f-other-desc',
+   'f-ems-grade','f-ems-structural','f-ems-nonstructural','f-habitability',
+   'f-hazus-state','f-hazus-occupancy','f-custom-cond','f-custom-action',
+   'f-custom-label1','f-custom-val1','f-custom-label2','f-custom-val2',
+   'f-fatalities','f-injured','f-notes','f-urgency','f-followup'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f-hazus-loss').value = 0;
+  document.getElementById('hazus-loss-val').textContent = '0%';
+  document.getElementById('f-hazus-func').value = 100;
+  document.getElementById('hazus-func-val').textContent = '100%';
+  document.getElementById('f-custom-score').value = 5;
+  document.getElementById('custom-score-val').textContent = '5';
+  // Deselect all chips
+  document.querySelectorAll('.chip.selected').forEach(c => c.classList.remove('selected'));
+}
+
+function goToPage(n) {
+  document.querySelectorAll('.form-page').forEach((p, i) => {
+    p.classList.toggle('active', i === n);
+  });
+  currentPage = n;
+  document.getElementById('btn-prev').style.display = n > 0 ? 'flex' : 'none';
+  document.getElementById('btn-next').style.display = n < TOTAL_PAGES - 1 ? 'flex' : 'none';
+  document.getElementById('btn-submit').style.display = n === TOTAL_PAGES - 1 ? 'flex' : 'none';
+  updatePageIndicator();
+  if (n === TOTAL_PAGES - 1) updateSubmitSummary();
+}
+
+function updatePageIndicator() {
+  const ind = document.getElementById('page-indicator');
+  ind.innerHTML = '';
+  for (let i = 0; i < TOTAL_PAGES; i++) {
+    const d = document.createElement('div');
+    d.className = 'page-dot' + (i === currentPage ? ' active' : '');
+    ind.appendChild(d);
+  }
+}
+
+function nextPage() {
+  if (currentPage < TOTAL_PAGES - 1) goToPage(currentPage + 1);
+}
+
+function prevPage() {
+  if (currentPage > 0) goToPage(currentPage - 1);
+}
+
+function selectChip(el, groupId, hiddenId) {
+  // BUGFIX 6: scope to the chip's own container instead of matching onclick text,
+  // so a group name that is a substring of another cannot clear the wrong chips.
+  const container = el.closest('.chip-group') || document.getElementById(groupId);
+  const scope = container ? container.querySelectorAll('.chip') : [];
+  scope.forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  if (hiddenId) document.getElementById(hiddenId).value = el.textContent.trim();
+}
+
+function switchScale(val) {
+  document.querySelectorAll('.scale-section').forEach(s => s.classList.remove('active'));
+  const sec = document.getElementById('scale-' + val);
+  if (sec) sec.classList.add('active');
+}
+
+function switchAssetFields(type) {
+  document.querySelectorAll('.asset-fields').forEach(el => el.style.display = 'none');
+  const sec = document.getElementById('af-' + type);
+  if (sec) sec.style.display = 'flex';
+}
+
+function updateSubmitSummary() {
+  const parts = [];
+  if (pendingLat) parts.push(`📍 ${pendingLat.toFixed(5)}, ${pendingLng.toFixed(5)}`);
+  const addr = document.getElementById('f-address').value;
+  if (addr) parts.push(`🏠 ${addr}`);
+  const asset = document.getElementById('f-asset-type').value;
+  if (asset) parts.push(`🏗 ${asset}`);
+  const scale = document.getElementById('f-scale-select').value;
+  if (scale !== 'none') parts.push(`⚠️ Scale: ${scale.toUpperCase()}`);
+  parts.push(`📷 ${currentPhotos.length} photo(s) captured`);
+  if (currentLaterPhotos.length) parts.push(`🗂 ${currentLaterPhotos.length} later batch(es) noted`);
+  document.getElementById('submit-summary').innerHTML = parts.join('<br>') || 'No data yet';
+}
+
+// ══════════════════════════════════════════════
+// PHOTOS
+// ══════════════════════════════════════════════
+function getCompressionSettings() {
+  const maxRes = parseInt(document.getElementById('set-max-res')?.value || '1920');
+  const quality = parseFloat(document.getElementById('set-quality')?.value || '0.75');
+  return { maxRes, quality };
+}
+
+function compressPhoto(dataUrl, maxRes, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > maxRes || h > maxRes) {
+        if (w > h) { h = Math.round(h * maxRes / w); w = maxRes; }
+        else { w = Math.round(w * maxRes / h); h = maxRes; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+function addPhotosFromInput(input) {
+  const files = Array.from(input.files);
+  const { maxRes, quality } = getCompressionSettings();
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const compressed = await compressPhoto(e.target.result, maxRes, quality);
+      const photoObj = {
+        id: 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+        dataUrl: compressed,
+        capturedAt: new Date().toISOString(),
+        lat: pendingLat || null,
+        lng: pendingLng || null,
+        filename: file.name || '',
+        originalSize: Math.round(file.size / 1024) + 'KB'
+      };
+      currentPhotos.push(photoObj);
+      renderPhotoGrid();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderPhotoGrid() {
+  const grid = document.getElementById('photo-grid');
+  grid.innerHTML = '';
+  currentPhotos.forEach((p, i) => {
+    const coordStr = p.lat ? p.lat.toFixed(5)+', '+p.lng.toFixed(5) : 'No GPS';
+    const fname = p.filename ? p.filename.slice(0,16) : '';
+    const div = document.createElement('div');
+    div.className = 'photo-thumb';
+    div.innerHTML = `
+      <img src="${p.dataUrl}">
+      <button class="del-photo" onclick="deletePhoto(${i})">✕</button>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);color:#fff;font-size:8px;padding:2px 4px;line-height:1.4;">
+        📍 ${coordStr}${fname ? '<br>'+fname : ''}
+      </div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function deletePhoto(i) {
+  currentPhotos.splice(i, 1);
+  renderPhotoGrid();
+}
+
+function addLaterPhotoRow(data) {
+  const container = document.getElementById('later-photos');
+  const id = 'lp_' + Date.now();
+  const row = document.createElement('div');
+  row.className = 'later-photo-row';
+  row.id = id;
+  row.innerHTML = `
+    <div class="lp-inputs">
+      <input class="field-input lp-camera" placeholder="Camera / Device name (e.g. DJI Mini 3)" type="text" style="font-size:13px;padding:8px;">
+      <input class="field-input lp-range" placeholder="File name or range (e.g. IMG_0023-IMG_0047)" type="text" style="font-size:13px;padding:8px;">
+    </div>
+    <button class="del-later" onclick="this.parentElement.remove(); syncLaterPhotos()">\u2715</button>
+  `;
+  container.appendChild(row);
+  // BUGFIX 3: assign values as DOM properties so quotes/angle brackets cannot break the markup
+  row.querySelector('.lp-camera').value = (data && data.camera) ? data.camera : '';
+  row.querySelector('.lp-range').value  = (data && data.fileRange) ? data.fileRange : '';
+  // BUGFIX 2: keep currentLaterPhotos in sync on add and on every keystroke
+  row.querySelectorAll('input').forEach(function(inp) { inp.addEventListener('input', syncLaterPhotos); });
+  syncLaterPhotos();
+}
+
+function syncLaterPhotos() {
+  currentLaterPhotos = [];
+  document.querySelectorAll('.later-photo-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    currentLaterPhotos.push({ camera: inputs[0].value, fileRange: inputs[1].value });
+  });
+}
+
+function getLaterPhotosFromDOM() {
+  const result = [];
+  document.querySelectorAll('.later-photo-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    result.push({ camera: inputs[0].value, fileRange: inputs[1].value });
+  });
+  return result;
+}
+
+// ══════════════════════════════════════════════
+// SUBMIT / EDIT / DELETE
+// ══════════════════════════════════════════════
+async function submitRecord() {
+  if (!pendingLat) { showToast('No location set'); return; }
+
+  const record = {
+    id: editingId || 'rec_' + Date.now(),
+    timestamp: new Date().toISOString(),
+    inspectorName: session.name,
+    inspectorId: session.id,
+    organization: session.org,
+    mission: session.mission,
+    lat: pendingLat,
+    lng: pendingLng,
+    address: document.getElementById('f-address').value,
+    osmId: pendingOSM?.id || '',
+    osmType: pendingOSM?.type || '',
+    osmName: pendingOSM?.name || '',
+    assetType: document.getElementById('f-asset-type').value,
+    // Building
+    buildingUse: document.getElementById('f-building-use').value,
+    floors: document.getElementById('f-floors').value,
+    construction: document.getElementById('f-construction').value,
+    yearBuilt: document.getElementById('f-year-building').value,
+    // Road
+    roadType: document.getElementById('f-road-type').value,
+    roadSurface: document.getElementById('f-road-surface').value,
+    roadLanes: document.getElementById('f-road-lanes').value,
+    roadLength: document.getElementById('f-road-length').value,
+    roadSpeed: document.getElementById('f-road-speed').value,
+    // Bridge
+    bridgeType: document.getElementById('f-bridge-type').value,
+    bridgeSpans: document.getElementById('f-bridge-spans').value,
+    bridgeSpanLength: document.getElementById('f-bridge-span-length').value,
+    bridgeLength: document.getElementById('f-bridge-length').value,
+    bridgeMaterial: document.getElementById('f-bridge-material').value,
+    yearBuiltBridge: document.getElementById('f-year-bridge').value,
+    bridgeCapacity: document.getElementById('f-bridge-capacity').value,
+    // Retaining Wall
+    wallType: document.getElementById('f-wall-type').value,
+    wallHeight: document.getElementById('f-wall-height').value,
+    wallLength: document.getElementById('f-wall-length').value,
+    wallMaterial: document.getElementById('f-wall-material').value,
+    // Infrastructure
+    infraType: document.getElementById('f-infra-type').value,
+    infraStatus: document.getElementById('f-infra-status').value,
+    // Other
+    otherDesc: document.getElementById('f-other-desc').value,
+    assetRef: document.getElementById('f-asset-ref').value,
+    damageScale: document.getElementById('f-scale-select').value,
+    // EMS-98
+    emsGrade: document.getElementById('f-ems-grade').value,
+    emsStructural: document.getElementById('f-ems-structural').value,
+    emsNonStructural: document.getElementById('f-ems-nonstructural').value,
+    habitability: document.getElementById('f-habitability').value,
+    // HAZUS
+    hazusState: document.getElementById('f-hazus-state').value,
+    hazusLossRatio: document.getElementById('f-hazus-loss').value,
+    hazusFunctionality: document.getElementById('f-hazus-func').value,
+    hazusOccupancy: document.getElementById('f-hazus-occupancy').value,
+    // Custom
+    customCondition: document.getElementById('f-custom-cond').value,
+    customAction: document.getElementById('f-custom-action').value,
+    customScore: document.getElementById('f-custom-score').value,
+    customLabel1: document.getElementById('f-custom-label1').value,
+    customValue1: document.getElementById('f-custom-val1').value,
+    customLabel2: document.getElementById('f-custom-label2').value,
+    customValue2: document.getElementById('f-custom-val2').value,
+    // Casualties
+    fatalities: document.getElementById('f-fatalities').value,
+    injured: document.getElementById('f-injured').value,
+    // Notes
+    notes: document.getElementById('f-notes').value,
+    urgency: document.getElementById('f-urgency').value,
+    followUp: document.getElementById('f-followup').value,
+    // Photos
+    photos: currentPhotos,
+    laterPhotos: getLaterPhotosFromDOM()
+  };
+
+  await dbPut(record);
+  addMarkerForRecord(record);
+  const all = await dbGetAll();
+  updateCounts(all);
+  closePanel();
+  showToast(editingId ? 'Record updated ✓' : 'Record saved ✓');
+  // Auto-save photos: writes to the chosen folder on desktop,
+  // falls back to the device Downloads folder on phones/tablets
+  if (record.photos && record.photos.length) {
+    savePhotosToFolder(record);
+  }
+  renderRecords();
+  if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+  pendingLat = null; pendingLng = null; pendingOSM = null;
+  editingId = null;   // BUGFIX: release edit binding so next record is new
+}
+
+async function editRecord(id) {
+  const records = await dbGetAll();
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  editingId = id;
+  resetForm();
+  // Restore location
+  pendingLat = r.lat; pendingLng = r.lng;
+  document.getElementById('loc-coords').textContent = r.lat.toFixed(6) + ', ' + r.lng.toFixed(6);
+  document.getElementById('loc-address').textContent = r.address || '';
+  document.getElementById('f-address').value = r.address || '';
+  if (r.osmId) {
+    pendingOSM = { id: r.osmId, type: r.osmType, name: r.osmName };
+    showOSMCard(pendingOSM);
+  }
+  // Asset
+  if (r.assetType) {
+    document.querySelectorAll('#asset-chips .chip').forEach(c => {
+      if (c.textContent.trim() === r.assetType) { c.classList.add('selected'); }
+    });
+    document.getElementById('f-asset-type').value = r.assetType;
+  }
+  // Restore asset-specific fields
+  if (r.assetType) {
+    const typeMap = {'Building':'building','Road':'road','Bridge':'bridge','Retaining Wall':'retaining-wall','Infrastructure':'infrastructure','Other':'other'};
+    const key = typeMap[r.assetType];
+    if (key) switchAssetFields(key);
+  }
+  // Building
+  document.getElementById('f-building-use').value = r.buildingUse || '';
+  document.getElementById('f-floors').value = r.floors || '';
+  document.getElementById('f-construction').value = r.construction || '';
+  document.getElementById('f-year-building').value = r.yearBuilt || '';
+  // Road
+  document.getElementById('f-road-type').value = r.roadType || '';
+  document.getElementById('f-road-surface').value = r.roadSurface || '';
+  document.getElementById('f-road-lanes').value = r.roadLanes || '';
+  document.getElementById('f-road-length').value = r.roadLength || '';
+  document.getElementById('f-road-speed').value = r.roadSpeed || '';
+  // Bridge
+  document.getElementById('f-bridge-type').value = r.bridgeType || '';
+  document.getElementById('f-bridge-spans').value = r.bridgeSpans || '';
+  document.getElementById('f-bridge-span-length').value = r.bridgeSpanLength || '';
+  document.getElementById('f-bridge-length').value = r.bridgeLength || '';
+  document.getElementById('f-bridge-material').value = r.bridgeMaterial || '';
+  document.getElementById('f-year-bridge').value = r.yearBuiltBridge || '';
+  document.getElementById('f-bridge-capacity').value = r.bridgeCapacity || '';
+  // Retaining Wall
+  document.getElementById('f-wall-type').value = r.wallType || '';
+  document.getElementById('f-wall-height').value = r.wallHeight || '';
+  document.getElementById('f-wall-length').value = r.wallLength || '';
+  document.getElementById('f-wall-material').value = r.wallMaterial || '';
+  // Infrastructure
+  document.getElementById('f-infra-type').value = r.infraType || '';
+  document.getElementById('f-infra-status').value = r.infraStatus || '';
+  // Other
+  document.getElementById('f-other-desc').value = r.otherDesc || '';
+  document.getElementById('f-asset-ref').value = r.assetRef || '';
+  document.getElementById('f-scale-select').value = r.damageScale || 'none';
+  switchScale(r.damageScale || 'none');
+  // EMS
+  document.getElementById('f-ems-structural').value = r.emsStructural || '';
+  document.getElementById('f-ems-nonstructural').value = r.emsNonStructural || '';
+  // HAZUS
+  document.getElementById('f-hazus-loss').value = r.hazusLossRatio || 0;
+  document.getElementById('hazus-loss-val').textContent = (r.hazusLossRatio || 0) + '%';
+  document.getElementById('f-hazus-func').value = r.hazusFunctionality || 100;
+  document.getElementById('hazus-func-val').textContent = (r.hazusFunctionality || 100) + '%';
+  document.getElementById('f-hazus-occupancy').value = r.hazusOccupancy || '';
+  // Custom
+  document.getElementById('f-custom-score').value = r.customScore || 5;
+  document.getElementById('custom-score-val').textContent = r.customScore || 5;
+  document.getElementById('f-custom-action').value = r.customAction || '';
+  document.getElementById('f-custom-label1').value = r.customLabel1 || '';
+  document.getElementById('f-custom-val1').value = r.customValue1 || '';
+  document.getElementById('f-custom-label2').value = r.customLabel2 || '';
+  document.getElementById('f-custom-val2').value = r.customValue2 || '';
+  // Casualties
+  document.getElementById('f-fatalities').value = r.fatalities || '';
+  document.getElementById('f-injured').value = r.injured || '';
+  // Notes
+  document.getElementById('f-notes').value = r.notes || '';
+  // Photos
+  currentPhotos = r.photos ? [...r.photos] : [];
+  renderPhotoGrid();
+  if (r.laterPhotos) {
+    r.laterPhotos.forEach(lp => addLaterPhotoRow(lp));
+  }
+  // Restore chip selections
+  function restoreChip(groupId, hiddenId, val) {
+    if (!val) return;
+    const container = document.getElementById(groupId);
+    if (!container) return;
+    container.querySelectorAll('.chip').forEach(c => {
+      if (c.textContent.trim() === val) { c.classList.add('selected'); document.getElementById(hiddenId).value = val; }
+    });
+  }
+  restoreChip('ems98-chips','f-ems-grade', r.emsGrade || '');
+  restoreChip('hazus-chips','f-hazus-state', r.hazusState || '');
+  restoreChip('custom-chips','f-custom-cond', r.customCondition || '');
+  restoreChip('habit-chips','f-habitability', r.habitability || '');
+  restoreChip('urgency-chips','f-urgency', r.urgency || '');
+  restoreChip('followup-chips','f-followup', r.followUp || '');
+
+  document.getElementById('panel-title').textContent = 'Edit Record';
+  goToPage(0);
+  openPanel();
+  map.closePopup();
+}
+
+async function deleteRecord(id) {
+  if (!confirm('Delete this record permanently?')) return;
+  await dbDelete(id);
+  if (recordMarkers[id]) { map.removeLayer(recordMarkers[id]); delete recordMarkers[id]; }
+  const all = await dbGetAll();
+  updateCounts(all);
+  renderRecords();
+  showToast('Record deleted');
+}
+
+async function clearAllRecords() {
+  if (!confirm('Delete ALL records from this device? This cannot be undone.\n\nExport first!')) return;
+  await dbClear();
+  Object.values(recordMarkers).forEach(m => map.removeLayer(m));
+  recordMarkers = {};
+  updateCounts([]);
+  renderRecords();
+  showToast('All records cleared');
+}
+
+// ══════════════════════════════════════════════
+// RECORDS LIST
+// ══════════════════════════════════════════════
+async function renderRecords() {
+  const records = await dbGetAll();
+  records.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  const list = document.getElementById('records-list');
+  document.getElementById('rec-count').textContent = records.length + ' record' + (records.length !== 1 ? 's' : '');
+  if (!records.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No records yet.<br>Go to Map and tap + New Record.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  records.forEach(r => {
+    const colorClass = getDamageColorClass(r);
+    const badgeLabel = r.damageScale === 'ems98' ? (r.emsGrade || 'EMS-98')
+      : r.damageScale === 'hazus' ? (r.hazusState || 'HAZUS')
+      : r.damageScale === 'custom' ? (r.customCondition || 'Custom')
+      : 'No Scale';
+
+    // Build damage detail string
+    let damageDetail = '';
+    if (r.damageScale === 'ems98') {
+      const parts = [r.emsGrade, r.emsStructural, r.habitability].filter(Boolean);
+      damageDetail = parts.join(' · ');
+    } else if (r.damageScale === 'hazus') {
+      const parts = [r.hazusState, r.hazusLossRatio ? 'Loss: '+r.hazusLossRatio+'%' : '', r.hazusOccupancy].filter(Boolean);
+      damageDetail = parts.join(' · ');
+    } else if (r.damageScale === 'custom') {
+      const parts = [r.customCondition, r.customAction, r.customScore ? 'Score: '+r.customScore+'/10' : ''].filter(Boolean);
+      damageDetail = parts.join(' · ');
+    }
+
+    // Build photos HTML — small thumbnails, tap to view large
+    const photoLat = r.lat ? r.lat.toFixed(5) : '';
+    const photoLng = r.lng ? r.lng.toFixed(5) : '';
+    const photoCoordStr = photoLat ? photoLat + ', ' + photoLng : 'No GPS';
+    const googleMapsUrl = photoLat ? 'https://maps.google.com/?q=' + photoLat + ',' + photoLng : '#';
+
+    let photosHtml = '';
+    if (r.photos && r.photos.length > 0) {
+      const thumbs = r.photos.map((p, i) => `
+        <div onclick="openPhotoViewer('${r.id}',${i})"
+             style="cursor:pointer;width:60px;height:60px;border-radius:6px;overflow:hidden;background:var(--bg);border:1px solid var(--border);flex-shrink:0;">
+          <img src="${p.dataUrl}" style="width:60px;height:60px;object-fit:cover;display:block;">
+        </div>
+      `).join('');
+      photosHtml = `
+        <div style="margin-top:10px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:6px;">
+            📷 ${r.photos.length} Photo${r.photos.length>1?'s':''} · <a href="${googleMapsUrl}" target="_blank" style="color:var(--primary);text-decoration:none;">📍 ${photoCoordStr}</a>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">${thumbs}</div>
+        </div>`;
+    }
+
+    // Later photo batches
+    let laterHtml = '';
+    if (r.laterPhotos && r.laterPhotos.length > 0) {
+      const rows = r.laterPhotos.map(lp => `
+        <div style="background:var(--bg);border-radius:6px;padding:8px 10px;font-size:12px;display:flex;gap:8px;align-items:center;">
+          <span style="font-size:16px;">📷</span>
+          <div>
+            <div style="font-weight:600;">${lp.camera || 'Unknown device'}</div>
+            <div style="color:var(--text-muted);">Files: ${lp.fileRange || '—'}</div>
+            <div style="color:var(--primary);font-size:11px;">📍 Record location: ${photoCoordStr}</div>
+          </div>
+        </div>
+      `).join('');
+      laterHtml = `
+        <div style="margin-top:10px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:6px;">🗂 ${r.laterPhotos.length} Deferred Photo Batch${r.laterPhotos.length>1?'es':''}</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">${rows}</div>
+        </div>`;
+    }
+
+    // Asset info
+    const assetDetails = [
+      r.buildingUse, r.construction,
+      r.floors ? r.floors + ' floors' : '',
+      r.yearBuilt ? 'Built ~' + r.yearBuilt : '',
+      r.assetRef
+    ].filter(Boolean).join(' · ');
+
+    // Casualties
+    const casualties = (r.fatalities || r.injured) ?
+      `<div style="background:#fdecea;border-radius:6px;padding:6px 10px;font-size:12px;color:#c0392b;margin-top:6px;font-weight:600;">
+        ⚠️ Fatalities: ${r.fatalities||0} · Injured: ${r.injured||0}
+      </div>` : '';
+
+    const card = document.createElement('div');
+    card.className = 'record-card';
+    card.innerHTML = `
+      <div class="record-card-header">
+        <div>
+          <div class="record-title">${r.assetType || 'Record'}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${r.timestamp ? r.timestamp.replace('T',' ').slice(0,16) : '—'} · ${r.inspectorName||'—'}</div>
+        </div>
+        <div class="damage-badge badge-${colorClass}">${badgeLabel}</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:13px;">
+        ${r.address ? `<div>🏠 <strong>${r.address}</strong></div>` : ''}
+        <div>📍 <a href="${googleMapsUrl}" target="_blank" style="color:var(--primary);text-decoration:none;">${photoCoordStr}</a>
+          ${r.osmName ? ` · 🔗 OSM: ${r.osmName}` : ''}
+        </div>
+        ${assetDetails ? `<div style="color:var(--text-muted);">🏗 ${assetDetails}</div>` : ''}
+        ${damageDetail ? `<div style="color:var(--text-muted);">⚠️ ${damageDetail}</div>` : ''}
+        ${r.urgency ? `<div>🚨 Urgency: <strong>${r.urgency}</strong>${r.followUp==='Yes'?' · Follow-up required':''}</div>` : ''}
+        ${r.notes ? `<div style="background:var(--bg);border-radius:6px;padding:6px 10px;margin-top:4px;font-size:12px;color:var(--text-muted);">📝 ${r.notes}</div>` : ''}
+      </div>
+
+      ${casualties}
+      ${photosHtml}
+      ${laterHtml}
+
+      <div class="record-actions" style="margin-top:12px;">
+        <button class="btn btn-secondary btn-sm ra-edit" onclick="editRecord('${r.id}')">✏️ Edit / Add Photos</button>
+        <button class="btn btn-secondary btn-sm" onclick="flyToRecord(${r.lat},${r.lng})">🗺 Map</button>
+        <button class="btn btn-secondary btn-sm ra-delete" style="color:var(--danger)" onclick="deleteRecord('${r.id}')">🗑 Delete</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function flyToRecord(lat, lng) {
+  switchTab('map', document.querySelector('.nav-btn'));
+  map.flyTo([lat, lng], 17);
+}
+
+// ══════════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════════
+async function exportXLSX() {
+  const records = await dbGetAll();
+  if (!records.length) { showToast('No records to export'); return; }
+  const rows = records.map(r => ({
+    'Record ID': r.id,
+    'Timestamp': r.timestamp,
+    'Inspector Name': r.inspectorName,
+    'Inspector ID': r.inspectorId,
+    'Organization': r.organization,
+    'Mission': r.mission,
+    'Latitude': r.lat,
+    'Longitude': r.lng,
+    'Address': r.address,
+    'OSM ID': r.osmId,
+    'OSM Type': r.osmType,
+    'OSM Name': r.osmName,
+    'Asset Type': r.assetType,
+    'Building Use': r.buildingUse,
+    'Floors': r.floors,
+    'Construction': r.construction,
+    'Year Built': r.yearBuilt,
+    'Asset Ref': r.assetRef,
+    'Damage Scale': r.damageScale,
+    'EMS Grade': r.emsGrade,
+    'EMS Structural': r.emsStructural,
+    'EMS Non-Structural': r.emsNonStructural,
+    'Habitability': r.habitability,
+    'HAZUS State': r.hazusState,
+    'HAZUS Loss Ratio (%)': r.hazusLossRatio,
+    'HAZUS Functionality (%)': r.hazusFunctionality,
+    'HAZUS Occupancy': r.hazusOccupancy,
+    'Custom Condition': r.customCondition,
+    'Custom Action': r.customAction,
+    'Custom Score': r.customScore,
+    'Custom Field 1': r.customLabel1 ? `${r.customLabel1}: ${r.customValue1}` : '',
+    'Custom Field 2': r.customLabel2 ? `${r.customLabel2}: ${r.customValue2}` : '',
+    'Fatalities': r.fatalities,
+    'Injured': r.injured,
+    'Urgency': r.urgency,
+    'Follow-up': r.followUp,
+    'Notes': r.notes,
+    'Photos (count)': r.photos?.length || 0,
+    'Later Photo Batches': r.laterPhotos?.map(p => `${p.camera} [${p.fileRange}]`).join(' | ') || ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Records');
+  XLSX.writeFile(wb, `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}.xlsx`);
+  showToast('XLSX exported ✓');
+}
+
+function buildGeoJSONFeatures(records, includePhotos) {
+  return records.filter(r => r.lat && r.lng).map(r => ({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [r.lng, r.lat] },
+    properties: {
+      id: r.id, timestamp: r.timestamp,
+      inspectorName: r.inspectorName, inspectorId: r.inspectorId,
+      organization: r.organization, mission: r.mission,
+      assetType: r.assetType, address: r.address,
+      osmId: r.osmId, osmType: r.osmType, osmName: r.osmName,
+      // Building
+      buildingUse: r.buildingUse, floors: r.floors, construction: r.construction, yearBuilt: r.yearBuilt,
+      // Road
+      roadType: r.roadType, roadSurface: r.roadSurface, roadLanes: r.roadLanes, roadLength: r.roadLength,
+      // Bridge
+      bridgeType: r.bridgeType, bridgeSpans: r.bridgeSpans, bridgeSpanLength: r.bridgeSpanLength,
+      bridgeLength: r.bridgeLength, bridgeMaterial: r.bridgeMaterial,
+      // Damage
+      damageScale: r.damageScale, emsGrade: r.emsGrade, emsStructural: r.emsStructural,
+      habitability: r.habitability, hazusState: r.hazusState, hazusLossRatio: r.hazusLossRatio,
+      customCondition: r.customCondition, customAction: r.customAction, customScore: r.customScore,
+      fatalities: r.fatalities, injured: r.injured,
+      urgency: r.urgency, followUp: r.followUp, notes: r.notes, assetRef: r.assetRef,
+      photoCount: r.photos?.length || 0,
+      laterBatches: r.laterPhotos?.map(p => `${p.camera} [${p.fileRange}]`).join(' | ') || '',
+      // Photos embedded if requested
+      photos: includePhotos ? (r.photos || []).map(p => ({
+        id: p.id, capturedAt: p.capturedAt, filename: p.filename,
+        lat: p.lat, lng: p.lng, dataUrl: p.dataUrl
+      })) : undefined
+    }
+  }));
+}
+
+async function exportGeoJSON() {
+  const records = await dbGetAll();
+  if (!records.length) { showToast('No records to export'); return; }
+  const geojson = { type: 'FeatureCollection', features: buildGeoJSONFeatures(records, false) };
+  downloadJSON(geojson, `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}.geojson`, 'application/geo+json');
+  showToast('GeoJSON exported ✓');
+}
+
+async function exportGeoJSONWithPhotos() {
+  const records = await dbGetAll();
+  if (!records.length) { showToast('No records to export'); return; }
+  showToast('Building GeoJSON with photos…');
+  const geojson = { type: 'FeatureCollection', features: buildGeoJSONFeatures(records, true) };
+  const json = JSON.stringify(geojson);
+  const sizeMB = (json.length / 1024 / 1024).toFixed(1);
+  downloadJSON(geojson, `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}_photos.geojson`, 'application/geo+json');
+  showToast(`GeoJSON + photos exported (${sizeMB} MB) ✓`);
+}
+
+async function saveFullSession() {
+  const records = await dbGetAll();
+  showToast('Saving session…');
+  const payload = {
+    _type: 'FieldSurveySession',
+    _version: 1,
+    exportedAt: new Date().toISOString(),
+    session: session,
+    records: records
+  };
+  const json = JSON.stringify(payload);
+  const sizeMB = (json.length / 1024 / 1024).toFixed(1);
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}.fieldsurveyjson`;
+  a.click();
+  showToast(`Session saved (${sizeMB} MB) ✓`);
+  const status = document.getElementById('session-status');
+  if (status) {
+    status.textContent = `✓ Session saved (${sizeMB} MB)`;
+    status.style.display = 'block';
+    setTimeout(() => status.style.display = 'none', 4000);
+  }
+}
+
+function loadSessionReplace() {
+  if (!confirm('This will DELETE all current records and replace with the loaded file. Are you sure?')) return;
+  document.getElementById('load-session-replace-input').click();
+}
+
+async function loadFullSession(input, replace) {
+  const file = input.files[0];
+  if (!file) return;
+  showToast('Loading session…');
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const payload = JSON.parse(e.target.result);
+      if (payload._type !== 'FieldSurveySession') { showToast('Invalid session file'); return; }
+      if (replace) await dbClear();
+      let count = 0;
+      for (const r of payload.records) {
+        await dbPut(r);
+        count++;
+      }
+      // Reload map markers
+      Object.values(recordMarkers).forEach(m => map.removeLayer(m));
+      recordMarkers = {};
+      await loadRecordsOnMap();
+      // Update session info
+      if (payload.session && payload.session.name) {
+        session = { ...payload.session, date: new Date().toISOString().split('T')[0] };
+        saveSessionToStorage();
+        updateTopbar();
+        syncSettingsFields();
+      }
+      showToast(`${count} records loaded ✓`);
+      renderRecords();
+      const status = document.getElementById('session-status');
+      if (status) {
+        status.textContent = `✓ ${count} records loaded successfully`;
+        status.style.display = 'block';
+        setTimeout(() => status.style.display = 'none', 4000);
+      }
+    } catch(err) {
+      showToast('Error reading file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function downloadJSON(obj, filename, mimeType) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: mimeType || 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+async function exportCSV() {
+  const records = await dbGetAll();
+  if (!records.length) { showToast('No records to export'); return; }
+  const keys = ['id','timestamp','inspectorName','inspectorId','organization','mission',
+    'lat','lng','address','osmId','osmType','osmName','assetType','buildingUse','floors',
+    'construction','yearBuilt','assetRef','damageScale','emsGrade','emsStructural',
+    'emsNonStructural','habitability','hazusState','hazusLossRatio','hazusFunctionality',
+    'hazusOccupancy','customCondition','customAction','customScore',
+    'fatalities','injured','urgency','followUp','notes'];
+  const csv = [keys.join(','), ...records.map(r =>
+    keys.map(k => JSON.stringify(r[k] ?? '')).join(',')
+  )].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}.csv`;
+  a.click();
+  showToast('CSV exported ✓');
+}
+
+// ══════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════
+function switchTab(name, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'records') renderRecords();
+  if (name === 'export') updateExportStats();
+  if (name === 'map') { setTimeout(() => map.invalidateSize(), 100); }
+}
+
+async function updateExportStats() {
+  const records = await dbGetAll();
+  const photoCount = records.reduce((acc, r) => acc + (r.photos?.length || 0), 0);
+  document.getElementById('exp-count').textContent = records.length;
+  document.getElementById('exp-photos').textContent = photoCount;
+  document.getElementById('exp-inspector').textContent = session.name || '—';
+}
+
+async function updateCounts(records) {
+  document.getElementById('rec-count').textContent = records.length + ' record' + (records.length !== 1 ? 's' : '');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+async function init() {
+  session.date = new Date().toISOString().split('T')[0];
+
+  // FIX: the map must come up first and must never depend on storage.
+  // Previously a blocked/failed IndexedDB open skipped initMap() and left a blank screen.
+  try {
+    loadSession();
+  } catch(e) {
+    console.error('session load failed', e);
+  }
+
+  try {
+    initMap();
+  } catch(e) {
+    console.error('map init failed', e);
+    showToast('Map failed to load - check your connection');
+  }
+
+  // Storage comes after, and each step fails independently
+  try {
+    await initDB();
+  } catch(e) {
+    console.error('database unavailable', e);
+    showToast('Storage unavailable - records cannot be saved');
+    return;
+  }
+
+  try {
+    await restorePhotoFolder();
+  } catch(e) {
+    console.error('folder restore failed', e);
+  }
+
+  try {
+    await loadRecordsOnMap();
+  } catch(e) {
+    console.error('could not draw records', e);
+  }
+}
+
+init();
+
+// ══ PHOTO VIEWER ══
+let pvPhotos = [];
+let pvIndex = 0;
+
+async function openPhotoViewer(recordId, startIndex) {
+  const records = await dbGetAll();
+  const r = records.find(x => x.id === recordId);
+  if (!r || !r.photos || !r.photos.length) return;
+  pvPhotos = r.photos;
+  pvIndex = startIndex;
+  const viewer = document.getElementById('photo-viewer');
+  viewer.style.display = 'flex';
+  pvShow();
+}
+
+function pvShow() {
+  const p = pvPhotos[pvIndex];
+  document.getElementById('pv-img').src = p.dataUrl;
+  document.getElementById('pv-counter').textContent = (pvIndex+1) + ' / ' + pvPhotos.length;
+  const coordStr = p.lat ? p.lat.toFixed(5)+', '+p.lng.toFixed(5) : 'No GPS';
+  const mapsUrl = p.lat ? 'https://maps.google.com/?q='+p.lat+','+p.lng : null;
+  document.getElementById('pv-location').innerHTML = mapsUrl
+    ? '📍 <a href="'+mapsUrl+'" target="_blank" style="color:#7dd3f0;text-decoration:none;">'+coordStr+'</a>'
+    : '📍 ' + coordStr;
+  document.getElementById('pv-filename').textContent = p.filename || p.capturedAt || '';
+}
+
+function pvPrev() { pvIndex = (pvIndex - 1 + pvPhotos.length) % pvPhotos.length; pvShow(); }
+function pvNext() { pvIndex = (pvIndex + 1) % pvPhotos.length; pvShow(); }
+
+function closePhotoViewer() {
+  document.getElementById('photo-viewer').style.display = 'none';
+  pvPhotos = []; pvIndex = 0;
+}
+
+// Swipe support on lightbox
+let pvTouchX = null;
+document.getElementById('photo-viewer').addEventListener('touchstart', e => { pvTouchX = e.touches[0].clientX; });
+document.getElementById('photo-viewer').addEventListener('touchend', e => {
+  if (pvTouchX === null) return;
+  const dx = e.changedTouches[0].clientX - pvTouchX;
+  if (Math.abs(dx) > 40) { dx < 0 ? pvNext() : pvPrev(); }
+  pvTouchX = null;
+});
+
+
+// PHOTO FOLDER (File System Access API) + mobile download fallback
+let photoFolderHandle = null;
+
+const FS_SUPPORTED = (typeof window.showDirectoryPicker === 'function');
+
+function setFolderLabel(text) {
+  ['setup-folder-name','set-folder-name'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  });
+}
+
+// --- persist the directory handle in IndexedDB so it survives a reload ---
+function handlePut(key, val) {
+  return new Promise(function(resolve, reject) {
+    const tx = DB.transaction('handles', 'readwrite');
+    const req = tx.objectStore('handles').put(val, key);
+    req.onsuccess = function() { resolve(); };
+    req.onerror = function() { reject(req.error); };
+  });
+}
+function handleGet(key) {
+  return new Promise(function(resolve) {
+    try {
+      const tx = DB.transaction('handles', 'readonly');
+      const req = tx.objectStore('handles').get(key);
+      req.onsuccess = function() { resolve(req.result || null); };
+      req.onerror = function() { resolve(null); };
+    } catch(e) { resolve(null); }
+  });
+}
+function handleDelete(key) {
+  return new Promise(function(resolve) {
+    try {
+      const tx = DB.transaction('handles', 'readwrite');
+      const req = tx.objectStore('handles').delete(key);
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function() { resolve(); };
+    } catch(e) { resolve(); }
+  });
+}
+
+// Called at startup: reload a previously chosen folder if permission still holds
+async function restorePhotoFolder() {
+  if (!FS_SUPPORTED) {
+    setFolderLabel('Not supported on this device - photos will download instead');
+    return;
+  }
+  const h = await handleGet('photoFolder');
+  if (!h) return;
+  try {
+    const perm = await h.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      photoFolderHandle = h;
+      setFolderLabel('Folder: ' + h.name);
+    } else {
+      // permission needs a user gesture to re-grant; show it as pending
+      photoFolderHandle = h;
+      setFolderLabel('Folder: ' + h.name + ' (tap Browse to re-authorise)');
+    }
+  } catch(e) { /* handle no longer valid */ }
+}
+
+async function pickPhotoFolder(displayId) {
+  if (!FS_SUPPORTED) {
+    showToast('Not supported here - photos will save to Downloads instead');
+    setFolderLabel('Not supported on this device - photos will download instead');
+    return;
+  }
+  try {
+    photoFolderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    await handlePut('photoFolder', photoFolderHandle);   // BUGFIX 4: persist it
+    setFolderLabel('Folder: ' + photoFolderHandle.name);
+    showToast('Photo folder set: ' + photoFolderHandle.name);
+  } catch(e) {
+    if (e.name !== 'AbortError') showToast('Could not access folder');
+  }
+}
+
+async function clearPhotoFolder() {
+  photoFolderHandle = null;
+  await handleDelete('photoFolder');
+  setFolderLabel('No folder selected');
+  showToast('Photo folder cleared');
+}
+
+// Build "REC_ID_Location" base name used for the folder and for download filenames
+function recordFolderName(record) {
+  const locPart = (record.address || (record.lat ? record.lat.toFixed(4) + '_' + record.lng.toFixed(4) : 'unknown'))
+    .replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
+  return (record.id + '_' + locPart).replace(/__+/g, '_').replace(/_$/, '');
+}
+
+async function savePhotosToFolder(record) {
+  if (!record.photos || !record.photos.length) return;
+
+  // Mobile / unsupported browser: fall back to downloading each photo
+  if (!FS_SUPPORTED || !photoFolderHandle) {
+    downloadPhotosFallback(record);
+    return;
+  }
+
+  try {
+    // Re-request permission if it lapsed since last session
+    const perm = await photoFolderHandle.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') {
+      const req = await photoFolderHandle.requestPermission({ mode: 'readwrite' });
+      if (req !== 'granted') {
+        showToast('Folder permission denied - downloading photos instead');
+        downloadPhotosFallback(record);
+        return;
+      }
+      setFolderLabel('Folder: ' + photoFolderHandle.name);
+    }
+
+    const recFolder = await photoFolderHandle.getDirectoryHandle(recordFolderName(record), { create: true });
+    for (let i = 0; i < record.photos.length; i++) {
+      const photo = record.photos[i];
+      const fname = photo.filename || ('photo_' + String(i + 1).padStart(3, '0') + '.jpg');
+      const fileHandle = await recFolder.getFileHandle(fname, { create: true });
+      const writable = await fileHandle.createWritable();
+      const res = await fetch(photo.dataUrl);
+      const blob = await res.blob();
+      await writable.write(blob);
+      await writable.close();
+    }
+    showToast(record.photos.length + ' photo(s) saved to folder');
+  } catch(e) {
+    if (e.name !== 'AbortError') {
+      showToast('Folder write failed - downloading instead');
+      downloadPhotosFallback(record);
+    }
+  }
+}
+
+// Fallback for phones/tablets: each photo lands in the device Downloads folder,
+// named RECORDID_Location_photo_001.jpg so it stays matched to its record.
+function downloadPhotosFallback(record) {
+  const base = recordFolderName(record);
+  record.photos.forEach(function(photo, i) {
+    const suffix = photo.filename || ('photo_' + String(i + 1).padStart(3, '0') + '.jpg');
+    const a = document.createElement('a');
+    a.href = photo.dataUrl;
+    a.download = base + '_' + suffix;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+  showToast(record.photos.length + ' photo(s) sent to Downloads');
+}
+
+function flyAndClose(recordId) {
+  map.closePopup();
+  switchTab('records', document.querySelectorAll('.nav-btn')[1]);
+  setTimeout(function() {
+    const cards = document.querySelectorAll('.record-card');
+    cards.forEach(function(c) {
+      if (c.innerHTML.indexOf(recordId) !== -1) c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, 400);
+}
+
+</script>
+
+<!-- ══ PHOTO VIEWER LIGHTBOX ══ -->
+<div id="photo-viewer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:5000;flex-direction:column;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;color:#fff;">
+    <div id="pv-counter" style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.8);"></div>
+    <div id="pv-location" style="font-size:12px;color:rgba(255,255,255,0.6);text-align:center;flex:1;padding:0 12px;"></div>
+    <button onclick="closePhotoViewer()" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+    <button onclick="pvPrev()" style="position:absolute;left:12px;z-index:1;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:44px;height:44px;color:#fff;font-size:22px;cursor:pointer;">‹</button>
+    <img id="pv-img" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;">
+    <button onclick="pvNext()" style="position:absolute;right:12px;z-index:1;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:44px;height:44px;color:#fff;font-size:22px;cursor:pointer;">›</button>
+  </div>
+  <div id="pv-filename" style="padding:10px 16px;color:rgba(255,255,255,0.5);font-size:12px;text-align:center;"></div>
+</div>
+
+</body>
+</html>
