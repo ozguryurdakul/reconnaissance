@@ -1890,10 +1890,16 @@ async function submitRecord() {
   updateCounts(all);
   closePanel();
   showToast(editingId ? 'Record updated ✓' : 'Record saved ✓');
-  // Auto-save photos: writes to the chosen folder on desktop,
-  // falls back to the device Downloads folder on phones/tablets
+  // Auto-save photos: writes to the chosen folder on desktop.
+  // On mobile the browser may block this because the user gesture has
+  // already been consumed by the async save above - the "Save Photos"
+  // button on each record card is the reliable path there.
   if (record.photos && record.photos.length) {
-    savePhotosToFolder(record);
+    if (FS_SUPPORTED && photoFolderHandle) {
+      savePhotosToFolder(record);
+    } else {
+      showToast('Tap "Save Photos" on the record to store them on this device');
+    }
   }
   renderRecords();
   if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
@@ -2150,6 +2156,7 @@ async function renderRecords() {
       <div class="record-actions" style="margin-top:12px;">
         <button class="btn btn-secondary btn-sm ra-edit" onclick="editRecord('${r.id}')">✏️ Edit / Add Photos</button>
         <button class="btn btn-secondary btn-sm" onclick="flyToRecord(${r.lat},${r.lng})">🗺 Map</button>
+        ${(r.photos && r.photos.length) ? `<button class="btn btn-secondary btn-sm" onclick="savePhotosNow('${r.id}')">⬇ Save Photos</button>` : ''}
         <button class="btn btn-secondary btn-sm ra-delete" style="color:var(--danger)" onclick="deleteRecord('${r.id}')">🗑 Delete</button>
       </div>
     `;
@@ -2630,18 +2637,51 @@ async function savePhotosToFolder(record) {
 
 // Fallback for phones/tablets: each photo lands in the device Downloads folder,
 // named RECORDID_Location_photo_001.jpg so it stays matched to its record.
-function downloadPhotosFallback(record) {
+// Uses blob: URLs (data: URLs are unreliable on Chrome for Android) and
+// staggers the clicks, which Android needs when saving several files.
+function dataUrlToBlob(dataUrl) {
+  const parts = dataUrl.split(',');
+  const mime = (parts[0].match(/:(.*?);/) || [null, 'image/jpeg'])[1];
+  const bin = atob(parts[1]);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+async function downloadPhotosFallback(record) {
   const base = recordFolderName(record);
-  record.photos.forEach(function(photo, i) {
+  const photos = record.photos || [];
+  for (let i = 0; i < photos.length; i++) {
+    const photo = photos[i];
     const suffix = photo.filename || ('photo_' + String(i + 1).padStart(3, '0') + '.jpg');
-    const a = document.createElement('a');
-    a.href = photo.dataUrl;
-    a.download = base + '_' + suffix;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  });
-  showToast(record.photos.length + ' photo(s) sent to Downloads');
+    try {
+      const blob = dataUrlToBlob(photo.dataUrl);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = base + '_' + suffix;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // give the browser time to register each download before the next
+      await new Promise(function(r) { setTimeout(r, 400); });
+      URL.revokeObjectURL(url);
+    } catch(e) {
+      console.error('photo download failed', e);
+    }
+  }
+  showToast(photos.length + ' photo(s) sent to Downloads');
+}
+
+// Explicit, user-initiated save — always allowed by the browser because it
+// runs directly from a tap rather than after an async save.
+async function savePhotosNow(recordId) {
+  const records = await dbGetAll();
+  const r = records.find(function(x) { return x.id === recordId; });
+  if (!r || !r.photos || !r.photos.length) { showToast('No photos on this record'); return; }
+  if (FS_SUPPORTED && photoFolderHandle) { savePhotosToFolder(r); }
+  else { downloadPhotosFallback(r); }
 }
 
 function flyAndClose(recordId) {
