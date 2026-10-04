@@ -10,6 +10,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <!-- SheetJS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- JSZip: builds the QGIS package (GeoJSON + photo files + style) as one download -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
   :root {
@@ -384,7 +386,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment & Field Inspection</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2026-10-04 build 8</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -491,6 +493,18 @@
     <h3>GeoJSON with Photos</h3>
     <p>Self-contained GeoJSON with all fields <strong>and photos embedded as base64</strong>. Larger file but fully portable — no separate photo folder needed.</p>
     <button class="btn btn-primary" onclick="exportGeoJSONWithPhotos()">Download GeoJSON + Photos</button>
+  </div>
+  <div class="export-card" style="border-color: var(--primary);">
+    <div class="export-icon">🗂️</div>
+    <h3>QGIS Package (ZIP)</h3>
+    <p>A ZIP containing <code>survey.geojson</code>, a <code>photos/</code> folder with every photo as a real file, and a QGIS style file. Unzip it, drag the GeoJSON into QGIS, and clicking a point shows all attributes with the photos displayed.</p>
+    <button class="btn btn-primary" onclick="exportQGISPackage()">Download QGIS Package</button>
+  </div>
+  <div class="export-card">
+    <div class="export-icon">📷</div>
+    <h3>All Photos (ZIP)</h3>
+    <p>Every photo from every record in one ZIP, in a folder per record named by record ID and location.</p>
+    <button class="btn btn-primary" onclick="saveAllPhotos()">Download All Photos</button>
   </div>
   <div class="export-card" style="border-color: var(--danger);">
     <div class="export-icon">🗑️</div>
@@ -636,9 +650,36 @@
     </div>
   </div>
   <div class="settings-section">
+    <h3>Storage</h3>
+    <div class="settings-card">
+      <div style="display:flex;gap:10px;margin-bottom:4px;">
+        <div class="stat-box" style="flex:1;"><div class="stat-num" id="st-records" style="font-size:22px;">—</div><div class="stat-label">Records</div></div>
+        <div class="stat-box" style="flex:1;"><div class="stat-num" id="st-photos" style="font-size:22px;">—</div><div class="stat-label">Photos</div></div>
+        <div class="stat-box" style="flex:1;"><div class="stat-num" id="st-used" style="font-size:22px;">—</div><div class="stat-label">Used</div></div>
+      </div>
+      <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
+        <div id="st-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s;"></div>
+      </div>
+      <div id="st-detail" style="font-size:12px;color:var(--text-muted);">Reading storage…</div>
+      <div id="st-warn" style="display:none;font-size:12px;font-weight:600;border-radius:8px;padding:8px 10px;"></div>
+      <div id="st-persist-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="requestPersistentStorage()">Protect data from deletion</button>
+        <button class="btn btn-secondary btn-sm" onclick="refreshStorageInfo()">Refresh</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.6;">
+        Photos are stored inside this browser, not as files on the device. Android may delete them
+        when storage runs low unless they are protected. Always keep a session file as a backup.
+      </div>
+    </div>
+  </div>
+  <div class="settings-section">
     <h3>About</h3>
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
+      <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
+        Version: <span id="app-version">2026-10-04 build 8</span>
+      </div>
+      <div style="font-size:11px;">If a fix seems missing, check this version matches the file you were given.</div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
       <div>No internet required for core functions</div>
@@ -2156,7 +2197,7 @@ async function renderRecords() {
       <div class="record-actions" style="margin-top:12px;">
         <button class="btn btn-secondary btn-sm ra-edit" onclick="editRecord('${r.id}')">✏️ Edit / Add Photos</button>
         <button class="btn btn-secondary btn-sm" onclick="flyToRecord(${r.lat},${r.lng})">🗺 Map</button>
-        ${(r.photos && r.photos.length) ? `<button class="btn btn-secondary btn-sm" onclick="savePhotosNow('${r.id}')">⬇ Save Photos</button>` : ''}
+        ${(r.photos && r.photos.length) ? `<button class="btn btn-secondary btn-sm js-save-photos" data-rec="${r.id}">⬇ Save Photos</button>` : ''}
         <button class="btn btn-secondary btn-sm ra-delete" style="color:var(--danger)" onclick="deleteRecord('${r.id}')">🗑 Delete</button>
       </div>
     `;
@@ -2387,6 +2428,7 @@ function switchTab(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'records') renderRecords();
   if (name === 'export') updateExportStats();
+  if (name === 'settings') refreshStorageInfo();
   if (name === 'map') { setTimeout(() => map.invalidateSize(), 100); }
 }
 
@@ -2674,14 +2716,84 @@ async function downloadPhotosFallback(record) {
   showToast(photos.length + ' photo(s) sent to Downloads');
 }
 
-// Explicit, user-initiated save — always allowed by the browser because it
-// runs directly from a tap rather than after an async save.
+// Explicit, user-initiated save.
+// On mobile this delivers ONE zip rather than several separate downloads:
+// Android blocks every download after the first in a sequence, which is why
+// the per-photo approach silently failed while the QGIS zip worked.
 async function savePhotosNow(recordId) {
+  try {
+    await savePhotosNowInner(recordId);
+  } catch(err) {
+    // Surface the failure instead of doing nothing at all
+    showToast('Save failed: ' + (err && err.message ? err.message : err));
+    console.error('savePhotosNow failed', err);
+  }
+}
+
+async function savePhotosNowInner(recordId) {
+  if (typeof dbGetAll !== 'function' || !DB) { showToast('Storage not ready - reopen the app'); return; }
   const records = await dbGetAll();
-  const r = records.find(function(x) { return x.id === recordId; });
-  if (!r || !r.photos || !r.photos.length) { showToast('No photos on this record'); return; }
-  if (FS_SUPPORTED && photoFolderHandle) { savePhotosToFolder(r); }
-  else { downloadPhotosFallback(r); }
+  const r = records.find(function(x) { return String(x.id) === String(recordId); });
+  if (!r) { showToast('Record not found: ' + recordId); return; }
+  if (!r.photos || !r.photos.length) { showToast('No photos on this record'); return; }
+
+  // Desktop with a chosen folder: write straight into it, no download at all
+  if (FS_SUPPORTED && photoFolderHandle) { savePhotosToFolder(r); return; }
+
+  // Always deliver a zip, even for a single photo. A plain image download is
+  // unreliable on Android (Chrome may preview it instead of saving), whereas
+  // a zip download is consistently accepted - the same principle the Export
+  // tab uses successfully.
+  if (typeof JSZip === 'undefined') { downloadPhotosFallback(r); return; }
+
+  try {
+    showToast('Packing ' + r.photos.length + ' photo' + (r.photos.length > 1 ? 's' : '') + '...');
+    const base = recordFolderName(r);
+    const zip = new JSZip();
+    const folder = zip.folder(base);
+    r.photos.forEach(function(photo, i) {
+      const name = photo.filename || ('photo_' + String(i + 1).padStart(3, '0') + '.jpg');
+      folder.file(name, photo.dataUrl.split(',')[1], { base64: true });
+    });
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = base + '_photos.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 3000);
+    showToast(r.photos.length + ' photo' + (r.photos.length > 1 ? 's' : '') + ' saved as ' + base + '_photos.zip');
+  } catch(e) {
+    showToast('Zip failed - saving individually');
+    downloadPhotosFallback(r);
+  }
+}
+
+// Save every photo from every record in one zip, organised per record.
+async function saveAllPhotos() {
+  if (typeof JSZip === 'undefined') { showToast('Zip library not loaded'); return; }
+  const records = await dbGetAll();
+  const withPhotos = records.filter(function(r) { return r.photos && r.photos.length; });
+  if (!withPhotos.length) { showToast('No photos to save'); return; }
+  showToast('Packing photos...');
+  const zip = new JSZip();
+  let n = 0;
+  withPhotos.forEach(function(r) {
+    const folder = zip.folder(recordFolderName(r));
+    r.photos.forEach(function(photo, i) {
+      const name = photo.filename || ('photo_' + String(i + 1).padStart(3, '0') + '.jpg');
+      folder.file(name, photo.dataUrl.split(',')[1], { base64: true });
+      n++;
+    });
+  });
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'FieldSurvey_photos_' + qgisSafe(session.mission) + '_' + session.date + '.zip';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 3000);
+  showToast(n + ' photos from ' + withPhotos.length + ' records saved');
 }
 
 function flyAndClose(recordId) {
@@ -2694,6 +2806,349 @@ function flyAndClose(recordId) {
     });
   }, 400);
 }
+
+
+
+// Manual escape hatch: open the current photo in its own tab so it can be
+// long-pressed and saved through the browser's own image menu.
+function openPhotoInTab() {
+  const p = pvPhotos[pvIndex];
+  if (!p) return;
+  try {
+    const url = URL.createObjectURL(dataUrlToBlob(p.dataUrl));
+    window.open(url, '_blank');
+  } catch(e) { showToast('Could not open photo'); }
+}
+
+
+// ---------------------------------------------------------------
+// QGIS PACKAGE EXPORT
+// Produces a ZIP with survey.geojson, a photos/ folder of real image
+// files, and a .qml style so QGIS shows the photos in the attribute
+// form and map tip. Base64-in-GeoJSON cannot do this - QGIS needs
+// files on disk referenced by relative path.
+// ---------------------------------------------------------------
+function qgisSafe(s) {
+  return String(s == null ? '' : s).replace(/[^a-zA-Z0-9]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '');
+}
+
+function qgisMapTip(maxPhotos) {
+  var imgs = '';
+  for (var i = 1; i <= maxPhotos; i++) {
+    imgs += '[% CASE WHEN "photo' + i + '" IS NOT NULL AND "photo' + i + '" != \'\' THEN ' +
+            '\'<img src="\' || @project_folder || \'/\' || "photo' + i + '" || \'" width="260">\' ELSE \'\' END %]';
+  }
+  return '<div style="font-family:sans-serif;font-size:12px;max-width:300px">' +
+    '<div style="background:#1a5f7a;color:#fff;padding:6px 8px;font-weight:bold">[% "asset_type" %] &mdash; [% "record_id" %]</div>' +
+    '<table style="border-collapse:collapse">' +
+    '<tr><td><b>Address</b></td><td>[% "address" %]</td></tr>' +
+    '<tr><td><b>Inspector</b></td><td>[% "inspector" %]</td></tr>' +
+    '<tr><td><b>Date</b></td><td>[% "timestamp" %]</td></tr>' +
+    '<tr><td><b>Damage</b></td><td>[% "damage_grade" %] ([% "damage_scale" %])</td></tr>' +
+    '<tr><td><b>Urgency</b></td><td>[% "urgency" %]</td></tr>' +
+    '<tr><td><b>Notes</b></td><td>[% "notes" %]</td></tr>' +
+    '</table><div>' + imgs + '</div></div>';
+}
+
+function qgisQml(maxPhotos) {
+  var fields = '';
+  for (var i = 1; i <= maxPhotos; i++) {
+    fields +=
+      '    <field name="photo' + i + '">\n' +
+      '      <editWidget type="ExternalResource">\n' +
+      '        <config>\n' +
+      '          <Option type="Map">\n' +
+      '            <Option name="DocumentViewer" type="int" value="1"/>\n' +
+      '            <Option name="DocumentViewerHeight" type="int" value="0"/>\n' +
+      '            <Option name="DocumentViewerWidth" type="int" value="0"/>\n' +
+      '            <Option name="FileWidget" type="bool" value="true"/>\n' +
+      '            <Option name="FileWidgetButton" type="bool" value="true"/>\n' +
+      '            <Option name="RelativeStorage" type="int" value="1"/>\n' +
+      '            <Option name="StorageMode" type="int" value="0"/>\n' +
+      '          </Option>\n' +
+      '        </config>\n' +
+      '      </editWidget>\n' +
+      '    </field>\n';
+  }
+  return '<!DOCTYPE qgis PUBLIC \'http://mapserver.org/dtd/qgis.dtd\' \'SYSTEM\'>\n' +
+    '<qgis version="3.34" styleCategories="MapTips|Forms">\n' +
+    '  <mapTip>' + qgisMapTip(maxPhotos).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</mapTip>\n' +
+    '  <fieldConfiguration>\n' + fields + '  </fieldConfiguration>\n' +
+    '</qgis>\n';
+}
+
+function qgisReadme(maxPhotos, nRecords, nPhotos) {
+  return [
+    'FieldSurvey - QGIS package',
+    '==========================',
+    '',
+    'Contents',
+    '  survey.geojson   ' + nRecords + ' records (EPSG:4326)',
+    '  photos/          ' + nPhotos + ' photo files',
+    '  survey.qml       layer style: attribute form + map tip',
+    '',
+    'How to use',
+    '  1. Unzip this archive into a folder.',
+    '  2. Create a QGIS project and SAVE IT INTO THAT SAME FOLDER.',
+    '     The photo paths are relative to the project file, so this matters.',
+    '  3. Drag survey.geojson into QGIS.',
+    '  4. Layer Properties > Symbology > Style (bottom) > Load Style >',
+    '     choose survey.qml. This loads both the attribute form and the map tip.',
+    '  5. Click a point with the Identify tool to see all attributes and photos.',
+    '     For hover previews, enable View > Show Map Tips.',
+    '',
+    'If photos do not appear in the form',
+    '  Layer Properties > Attribute Form > select field photo1 >',
+    '  Widget Type = Attachment >',
+    '  Integrated Document Viewer = Image >',
+    '  Relative Paths = Relative to Project Path.',
+    '  Repeat for photo2 ... photo' + maxPhotos + '.',
+    '',
+    'Fields: record_id, timestamp, inspector, inspector_id, organization,',
+    'mission, asset_type, address, osm_id, osm_name, damage_scale,',
+    'damage_grade, structural, habitability, loss_ratio, urgency, follow_up,',
+    'fatalities, injured, notes, asset_ref, asset_detail, photo_count,',
+    'photo1 .. photo' + maxPhotos + ', later_batches',
+    ''
+  ].join('\n');
+}
+
+function qgisDamageGrade(r) {
+  if (r.damageScale === 'ems98') return r.emsGrade || '';
+  if (r.damageScale === 'hazus') return r.hazusState || '';
+  if (r.damageScale === 'custom') return r.customCondition || '';
+  return '';
+}
+
+function qgisAssetDetail(r) {
+  var d = [];
+  if (r.assetType === 'Building') {
+    if (r.buildingUse) d.push('Use: ' + r.buildingUse);
+    if (r.floors) d.push('Floors: ' + r.floors);
+    if (r.construction) d.push('Construction: ' + r.construction);
+    if (r.yearBuilt) d.push('Year: ' + r.yearBuilt);
+  } else if (r.assetType === 'Bridge') {
+    if (r.bridgeType) d.push('Type: ' + r.bridgeType);
+    if (r.bridgeSpans) d.push('Spans: ' + r.bridgeSpans);
+    if (r.bridgeSpanLength) d.push('Max span: ' + r.bridgeSpanLength + ' m');
+    if (r.bridgeLength) d.push('Length: ' + r.bridgeLength + ' m');
+    if (r.bridgeMaterial) d.push('Material: ' + r.bridgeMaterial);
+    if (r.yearBuiltBridge) d.push('Year: ' + r.yearBuiltBridge);
+    if (r.bridgeCapacity) d.push('Capacity: ' + r.bridgeCapacity + ' t');
+  } else if (r.assetType === 'Road') {
+    if (r.roadType) d.push('Type: ' + r.roadType);
+    if (r.roadSurface) d.push('Surface: ' + r.roadSurface);
+    if (r.roadLanes) d.push('Lanes: ' + r.roadLanes);
+    if (r.roadLength) d.push('Length: ' + r.roadLength + ' m');
+  } else if (r.assetType === 'Retaining Wall') {
+    if (r.wallType) d.push('Type: ' + r.wallType);
+    if (r.wallHeight) d.push('Height: ' + r.wallHeight + ' m');
+    if (r.wallLength) d.push('Length: ' + r.wallLength + ' m');
+    if (r.wallMaterial) d.push('Material: ' + r.wallMaterial);
+  } else if (r.assetType === 'Infrastructure') {
+    if (r.infraType) d.push('Type: ' + r.infraType);
+    if (r.infraStatus) d.push('Status: ' + r.infraStatus);
+  } else if (r.otherDesc) {
+    d.push(r.otherDesc);
+  }
+  return d.join('; ');
+}
+
+async function exportQGISPackage() {
+  if (typeof JSZip === 'undefined') { showToast('ZIP library not loaded - check your connection'); return; }
+  const records = await dbGetAll();
+  if (!records.length) { showToast('No records to export'); return; }
+
+  showToast('Building QGIS package...');
+  const zip = new JSZip();
+  const photosDir = zip.folder('photos');
+
+  let maxPhotos = 1, totalPhotos = 0;
+  records.forEach(function(r) { maxPhotos = Math.max(maxPhotos, (r.photos || []).length); });
+
+  const features = [];
+  for (const r of records) {
+    if (!r.lat || !r.lng) continue;
+    const base = qgisSafe(r.id) + '_' + qgisSafe((r.address || '').slice(0, 30));
+    const props = {
+      record_id: r.id,
+      timestamp: r.timestamp || '',
+      inspector: r.inspectorName || '',
+      inspector_id: r.inspectorId || '',
+      organization: r.organization || '',
+      mission: r.mission || '',
+      asset_type: r.assetType || '',
+      address: r.address || '',
+      osm_id: r.osmId || '',
+      osm_name: r.osmName || '',
+      damage_scale: r.damageScale || '',
+      damage_grade: qgisDamageGrade(r),
+      structural: r.emsStructural || '',
+      habitability: r.habitability || '',
+      loss_ratio: r.hazusLossRatio || '',
+      urgency: r.urgency || '',
+      follow_up: r.followUp || '',
+      fatalities: r.fatalities || '',
+      injured: r.injured || '',
+      notes: r.notes || '',
+      asset_ref: r.assetRef || '',
+      asset_detail: qgisAssetDetail(r),
+      photo_count: (r.photos || []).length,
+      later_batches: (r.laterPhotos || []).map(function(x) { return x.camera + ' [' + x.fileRange + ']'; }).join(' | ')
+    };
+
+    // write each photo as a real file and store its relative path
+    const photos = r.photos || [];
+    for (let i = 0; i < photos.length; i++) {
+      const name = base + '_' + String(i + 1).padStart(3, '0') + '.jpg';
+      const b64 = photos[i].dataUrl.split(',')[1];
+      photosDir.file(name, b64, { base64: true });
+      props['photo' + (i + 1)] = 'photos/' + name;
+      totalPhotos++;
+    }
+    for (let i = photos.length; i < maxPhotos; i++) props['photo' + (i + 1)] = '';
+
+    features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [r.lng, r.lat] }, properties: props });
+  }
+
+  zip.file('survey.geojson', JSON.stringify({
+    type: 'FeatureCollection',
+    name: 'FieldSurvey',
+    crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:OGC:1.3:CRS84' } },
+    features: features
+  }, null, 2));
+  zip.file('survey.qml', qgisQml(maxPhotos));
+  zip.file('README.txt', qgisReadme(maxPhotos, features.length, totalPhotos));
+
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'FieldSurvey_QGIS_' + qgisSafe(session.mission) + '_' + session.date + '.zip';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 3000);
+  showToast('QGIS package: ' + features.length + ' records, ' + totalPhotos + ' photos (' + (blob.size / 1048576).toFixed(1) + ' MB)');
+}
+
+
+// ---------------------------------------------------------------
+// STORAGE METER + PERSISTENCE
+// Photos live in IndexedDB, which Android may evict under storage
+// pressure unless the origin is marked persistent.
+// ---------------------------------------------------------------
+function fmtBytes(b) {
+  if (b == null) return '—';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(0) + ' KB';
+  if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+  return (b / 1073741824).toFixed(2) + ' GB';
+}
+
+async function refreshStorageInfo() {
+  const elRec = document.getElementById('st-records');
+  const elPho = document.getElementById('st-photos');
+  const elUse = document.getElementById('st-used');
+  const elBar = document.getElementById('st-bar');
+  const elDet = document.getElementById('st-detail');
+  const elWarn = document.getElementById('st-warn');
+  if (!elRec) return;
+
+  // counts from the database
+  let nRec = 0, nPho = 0;
+  try {
+    const records = await dbGetAll();
+    nRec = records.length;
+    nPho = records.reduce(function(s, r) { return s + ((r.photos && r.photos.length) || 0); }, 0);
+  } catch(e) { /* database not ready */ }
+  elRec.textContent = nRec;
+  elPho.textContent = nPho;
+
+  // quota from the browser
+  let used = null, quota = null;
+  if (navigator.storage && navigator.storage.estimate) {
+    try {
+      const est = await navigator.storage.estimate();
+      used = est.usage; quota = est.quota;
+    } catch(e) {}
+  }
+  elUse.textContent = used == null ? '—' : fmtBytes(used);
+
+  let pct = 0;
+  if (used != null && quota) pct = Math.min(100, (used / quota) * 100);
+  elBar.style.width = pct.toFixed(1) + '%';
+  elBar.style.background = pct > 80 ? 'var(--danger)' : pct > 60 ? 'var(--warning)' : 'var(--primary)';
+
+  // persistence state
+  let persisted = false;
+  if (navigator.storage && navigator.storage.persisted) {
+    try { persisted = await navigator.storage.persisted(); } catch(e) {}
+  }
+
+  const parts = [];
+  if (used != null && quota) {
+    parts.push(fmtBytes(used) + ' of ' + fmtBytes(quota) + ' available (' + pct.toFixed(1) + '%)');
+  } else {
+    parts.push('Storage estimate not available in this browser');
+  }
+  parts.push(persisted ? 'Protected: Android will not evict this data'
+                       : 'Not protected: Android may delete this data when storage is low');
+  if (nPho > 0 && used != null) {
+    parts.push('About ' + fmtBytes(Math.round(used / nPho)) + ' per photo');
+  }
+  elDet.innerHTML = parts.join('<br>');
+
+  // performance warning - the app loads every photo into memory at once
+  elWarn.style.display = 'none';
+  if (nPho >= 400) {
+    elWarn.style.display = 'block';
+    elWarn.style.background = 'var(--danger-light)';
+    elWarn.style.color = 'var(--danger)';
+    elWarn.textContent = nPho + ' photos stored. The app loads all photos into memory at once, so the tab may become unstable. Save the session and clear records.';
+  } else if (nPho >= 200) {
+    elWarn.style.display = 'block';
+    elWarn.style.background = '#fdf3e3';
+    elWarn.style.color = 'var(--warning)';
+    elWarn.textContent = nPho + ' photos stored. Performance will start to degrade beyond about 300. Consider saving the session and starting a new one.';
+  }
+}
+
+async function requestPersistentStorage() {
+  if (!navigator.storage || !navigator.storage.persist) {
+    showToast('Not supported by this browser');
+    return;
+  }
+  try {
+    const already = await navigator.storage.persisted();
+    if (already) { showToast('Data is already protected'); refreshStorageInfo(); return; }
+    const granted = await navigator.storage.persist();
+    showToast(granted ? 'Data protected from automatic deletion'
+                      : 'Browser declined - keep saving session files as backup');
+    refreshStorageInfo();
+  } catch(e) {
+    showToast('Could not change storage protection');
+  }
+}
+
+
+// Delegated handler for the per-record Save Photos button.
+// Inline onclick inside innerHTML can fail silently in some mobile contexts;
+// a single document-level listener is more dependable and survives re-renders.
+document.addEventListener('click', function(ev) {
+  const btn = ev.target && ev.target.closest ? ev.target.closest('.js-save-photos') : null;
+  if (!btn) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  const id = btn.getAttribute('data-rec');
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = 'Saving...';
+  Promise.resolve(savePhotosNow(id)).catch(function(e) {
+    showToast('Save failed: ' + (e && e.message ? e.message : e));
+  }).then(function() {
+    btn.disabled = false;
+    btn.textContent = label;
+  });
+});
 
 </script>
 
@@ -2709,7 +3164,12 @@ function flyAndClose(recordId) {
     <img id="pv-img" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;">
     <button onclick="pvNext()" style="position:absolute;right:12px;z-index:1;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:44px;height:44px;color:#fff;font-size:22px;cursor:pointer;">›</button>
   </div>
-  <div id="pv-filename" style="padding:10px 16px;color:rgba(255,255,255,0.5);font-size:12px;text-align:center;"></div>
+  <div id="pv-filename" style="padding:8px 16px 4px;color:rgba(255,255,255,0.5);font-size:12px;text-align:center;"></div>
+  <div style="padding:0 16px 16px;text-align:center;">
+    <button onclick="openPhotoInTab()" style="background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:#fff;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+      Open in New Tab (then long-press to save)
+    </button>
+  </div>
 </div>
 
 </body>
