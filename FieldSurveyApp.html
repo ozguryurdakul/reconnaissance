@@ -391,7 +391,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2026-10-04 build 11</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v1.11</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -686,12 +686,24 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">2026-10-04 build 11</span>
+        Version: <span id="app-version">v1.11</span>
       </div>
-      <div style="font-size:11px;">If a fix seems missing, check this version matches the file you were given.</div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
       <div>No internet required for core functions</div>
+    </div>
+  </div>
+  <div class="settings-section">
+    <h3>How to Cite</h3>
+    <div class="settings-card">
+      <div style="font-size:12px;color:var(--text-muted);">If you use this tool in research or reporting, please cite it as:</div>
+      <div id="citation-text" style="background:var(--bg);border-left:3px solid var(--primary);border-radius:6px;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--text);">
+        Yurdakul, &Ouml;. (2026). <em>FieldSurvey: A web application for post-disaster damage assessment
+        of bridges and transport infrastructure</em> [Computer software].
+        Faculty of Transport Engineering, University of Pardubice.
+        <a href="https://github.com/ozguryurdakul/reconnaissance" target="_blank" rel="noopener" style="color:var(--primary);word-break:break-all;">https://github.com/ozguryurdakul/reconnaissance</a>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="copyCitation()" style="align-self:flex-start;">Copy citation</button>
     </div>
   </div>
 </div>
@@ -2931,6 +2943,11 @@ function qgisReadme(maxPhotos, nRecords, nPhotos) {
     'damage_grade, structural, habitability, loss_ratio, urgency, follow_up,',
     'fatalities, injured, notes, asset_ref, asset_detail, photo_count,',
     'photo1 .. photo' + maxPhotos + ', later_batches',
+    '',
+    'How to cite',
+    '  ' + CITATION_TEXT,
+    '',
+    'Generated with FieldSurvey ' + APP_VERSION,
     ''
   ].join('\n');
 }
@@ -3171,6 +3188,42 @@ document.addEventListener('click', function(ev) {
     btn.textContent = label;
   });
 });
+
+
+// Citation used in the About tab and written into exported packages.
+const CITATION_TEXT = 'Yurdakul, Ö. (2026). FieldSurvey: A web application for post-disaster '
+  + 'damage assessment of bridges and transport infrastructure [Computer software]. '
+  + 'Faculty of Transport Engineering, University of Pardubice. '
+  + 'https://github.com/ozguryurdakul/reconnaissance';
+
+const APP_VERSION = 'v1.11';
+
+function copyCitation() {
+  const done = function() { showToast('Citation copied'); };
+  const fail = function() { showToast('Could not copy - select the text manually'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(CITATION_TEXT).then(done).catch(function() {
+      legacyCopy(CITATION_TEXT) ? done() : fail();
+    });
+  } else {
+    legacyCopy(CITATION_TEXT) ? done() : fail();
+  }
+}
+
+// Fallback for browsers without the async clipboard API (and for file:// origins)
+function legacyCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch(e) { return false; }
+}
 
 </script>
 
