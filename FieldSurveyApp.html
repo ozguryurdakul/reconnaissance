@@ -305,6 +305,11 @@
 
   /* ── EXPORT SCREEN ── */
   #screen-export { overflow-y: auto; padding: 16px; }
+  .exp-group {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text-muted); margin: 18px 2px 8px;
+  }
+  .exp-group:first-of-type { margin-top: 4px; }
   .export-card {
     background: var(--white); border-radius: var(--radius); padding: 20px;
     margin-bottom: 12px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
@@ -386,7 +391,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2026-10-04 build 9</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2026-10-04 build 11</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -470,6 +475,7 @@
     <div class="stat-box"><div class="stat-num" id="exp-photos">0</div><div class="stat-label">Photos</div></div>
     <div class="stat-box"><div class="stat-num" id="exp-inspector">1</div><div class="stat-label">Inspector</div></div>
   </div>
+  <div class="exp-group">Tables</div>
   <div class="export-card">
     <div class="export-icon">📊</div>
     <h3>Export to XLSX</h3>
@@ -477,35 +483,38 @@
     <button class="btn btn-primary" onclick="exportXLSX()">Download XLSX</button>
   </div>
   <div class="export-card">
-    <div class="export-icon">🗺️</div>
-    <h3>Export to GeoJSON</h3>
-    <p>Geographic data file compatible with QGIS, ArcGIS, and any GIS platform. Each record is a georeferenced feature.</p>
-    <button class="btn btn-primary" onclick="exportGeoJSON()">Download GeoJSON</button>
-  </div>
-  <div class="export-card">
     <div class="export-icon">📋</div>
     <h3>Export to CSV</h3>
     <p>Flat comma-separated file for database import, R, Python, or SPSS analysis.</p>
     <button class="btn btn-primary" onclick="exportCSV()">Download CSV</button>
   </div>
-  <div class="export-card">
-    <div class="export-icon">🗺️+📷</div>
-    <h3>GeoJSON with Photos</h3>
-    <p>Self-contained GeoJSON with all fields <strong>and photos embedded as base64</strong>. Larger file but fully portable — no separate photo folder needed.</p>
-    <button class="btn btn-primary" onclick="exportGeoJSONWithPhotos()">Download GeoJSON + Photos</button>
-  </div>
-  <div class="export-card" style="border-color: var(--primary);">
-    <div class="export-icon">🗂️</div>
-    <h3>QGIS Package (ZIP)</h3>
-    <p>A ZIP containing <code>survey.geojson</code>, a <code>photos/</code> folder with every photo as a real file, and a QGIS style file. Unzip it, drag the GeoJSON into QGIS, and clicking a point shows all attributes with the photos displayed.</p>
-    <button class="btn btn-primary" onclick="exportQGISPackage()">Download QGIS Package</button>
-  </div>
+
+  <div class="exp-group">Photos</div>
   <div class="export-card">
     <div class="export-icon">📷</div>
     <h3>All Photos (ZIP)</h3>
     <p>Every photo from every record in one ZIP, in a folder per record named by record ID and location.</p>
     <button class="btn btn-primary" onclick="saveAllPhotos()">Download All Photos</button>
   </div>
+
+  <div class="exp-group">GIS</div>
+  <div class="export-card" style="border-color: var(--primary);">
+    <div class="export-icon">🗂️</div>
+    <h3>QGIS Package (ZIP) &nbsp;<span style="background:var(--success);color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;vertical-align:middle;">WITH PHOTOS</span></h3>
+    <p>A ZIP containing <code>survey.geojson</code>, a <code>photos/</code> folder with every photo as a real file, and a QGIS style file.</p>
+    <p style="background:var(--primary-light);color:var(--primary);border-radius:8px;padding:10px 12px;font-weight:600;">
+      Unzip it, then <strong>save your QGIS project into that same folder</strong> before loading survey.geojson — the photo paths are relative to the project file. Then load survey.qml via Layer Properties → Symbology → Style → Load Style.
+    </p>
+    <button class="btn btn-primary" onclick="exportQGISPackage()">Download QGIS Package</button>
+  </div>
+  <div class="export-card">
+    <div class="export-icon">🗺️</div>
+    <h3>GeoJSON only (no photos)</h3>
+    <p>Attributes only, as a single file. Use the QGIS Package above if you want the photos.</p>
+    <button class="btn btn-primary" onclick="exportGeoJSON()">Download GeoJSON</button>
+  </div>
+
+  <div class="exp-group" style="color:var(--danger);">Danger zone</div>
   <div class="export-card" style="border-color: var(--danger);">
     <div class="export-icon">🗑️</div>
     <h3>Clear All Records</h3>
@@ -677,7 +686,7 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">2026-10-04 build 9</span>
+        Version: <span id="app-version">2026-10-04 build 11</span>
       </div>
       <div style="font-size:11px;">If a fix seems missing, check this version matches the file you were given.</div>
       <div>Map: OpenStreetMap © contributors</div>
@@ -2326,16 +2335,6 @@ async function exportGeoJSON() {
   showToast('GeoJSON exported ✓');
 }
 
-async function exportGeoJSONWithPhotos() {
-  const records = await dbGetAll();
-  if (!records.length) { showToast('No records to export'); return; }
-  showToast('Building GeoJSON with photos…');
-  const geojson = { type: 'FeatureCollection', features: buildGeoJSONFeatures(records, true) };
-  const json = JSON.stringify(geojson);
-  const sizeMB = (json.length / 1024 / 1024).toFixed(1);
-  downloadJSON(geojson, `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}_photos.geojson`, 'application/geo+json');
-  showToast(`GeoJSON + photos exported (${sizeMB} MB) ✓`);
-}
 
 async function saveFullSession() {
   const records = await dbGetAll();
