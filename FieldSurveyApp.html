@@ -10,7 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <!-- SheetJS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- JSZip: builds the QGIS package (GeoJSON + photo files + style) as one download -->
+<!-- JSZip: builds the GIS package (GeoJSON + photo files + style) as one download -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
@@ -391,7 +391,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v1.11</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v1.12</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -500,17 +500,17 @@
   <div class="exp-group">GIS</div>
   <div class="export-card" style="border-color: var(--primary);">
     <div class="export-icon">🗂️</div>
-    <h3>QGIS Package (ZIP) &nbsp;<span style="background:var(--success);color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;vertical-align:middle;">WITH PHOTOS</span></h3>
-    <p>A ZIP containing <code>survey.geojson</code>, a <code>photos/</code> folder with every photo as a real file, and a QGIS style file.</p>
+    <h3>GIS Package (ZIP) &nbsp;<span style="background:var(--success);color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;vertical-align:middle;">WITH PHOTOS</span></h3>
+    <p>A ZIP containing <code>survey.geojson</code> (standard GeoJSON, EPSG:4326), a <code>photos/</code> folder with every photo as a real file, and a README. Opens in QGIS, ArcGIS Pro, or anything that reads GeoJSON — a ready-made QGIS style file is included.</p>
     <p style="background:var(--primary-light);color:var(--primary);border-radius:8px;padding:10px 12px;font-weight:600;">
-      Unzip it, then <strong>save your QGIS project into that same folder</strong> before loading survey.geojson — the photo paths are relative to the project file. Then load survey.qml via Layer Properties → Symbology → Style → Load Style.
+      Unzip it and <strong>save your GIS project into that same folder</strong> — the photo paths are relative to the project file. The README has the per-software steps.
     </p>
-    <button class="btn btn-primary" onclick="exportQGISPackage()">Download QGIS Package</button>
+    <button class="btn btn-primary" onclick="exportGISPackage()">Download GIS Package</button>
   </div>
   <div class="export-card">
     <div class="export-icon">🗺️</div>
     <h3>GeoJSON only (no photos)</h3>
-    <p>Attributes only, as a single file. Use the QGIS Package above if you want the photos.</p>
+    <p>Attributes only, as a single file. Use the GIS Package above if you want the photos.</p>
     <button class="btn btn-primary" onclick="exportGeoJSON()">Download GeoJSON</button>
   </div>
 
@@ -686,7 +686,7 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">v1.11</span>
+        Version: <span id="app-version">v1.12</span>
       </div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
@@ -2753,7 +2753,7 @@ async function downloadPhotosFallback(record) {
 // Explicit, user-initiated save.
 // On mobile this delivers ONE zip rather than several separate downloads:
 // Android blocks every download after the first in a sequence, which is why
-// the per-photo approach silently failed while the QGIS zip worked.
+// the per-photo approach silently failed while the GIS package zip worked.
 async function savePhotosNow(recordId) {
   try {
     await savePhotosNowInner(recordId);
@@ -2824,7 +2824,7 @@ async function saveAllPhotos() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'FieldSurvey_photos_' + qgisSafe(session.mission) + '_' + session.date + '.zip';
+  a.download = 'FieldSurvey_photos_' + safeName(session.mission) + '_' + session.date + '.zip';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(url); }, 3000);
   showToast(n + ' photos from ' + withPhotos.length + ' records saved');
@@ -2856,13 +2856,13 @@ function openPhotoInTab() {
 
 
 // ---------------------------------------------------------------
-// QGIS PACKAGE EXPORT
-// Produces a ZIP with survey.geojson, a photos/ folder of real image
-// files, and a .qml style so QGIS shows the photos in the attribute
-// form and map tip. Base64-in-GeoJSON cannot do this - QGIS needs
-// files on disk referenced by relative path.
+// GIS PACKAGE EXPORT
+// Produces a ZIP with survey.geojson (standard GeoJSON), a photos/ folder
+// of real image files, and an optional .qml style for QGIS. Photos are
+// referenced by relative path: base64 embedded in attributes is only text
+// to a GIS, so the images must exist as files on disk.
 // ---------------------------------------------------------------
-function qgisSafe(s) {
+function safeName(s) {
   return String(s == null ? '' : s).replace(/[^a-zA-Z0-9]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '');
 }
 
@@ -2911,38 +2911,59 @@ function qgisQml(maxPhotos) {
     '</qgis>\n';
 }
 
-function qgisReadme(maxPhotos, nRecords, nPhotos) {
+function packageReadme(maxPhotos, nRecords, nPhotos) {
+  const photoFields = maxPhotos === 1 ? 'photo1' : ('photo1 .. photo' + maxPhotos);
   return [
-    'FieldSurvey - QGIS package',
-    '==========================',
+    'FieldSurvey - GIS package',
+    '=========================',
     '',
     'Contents',
-    '  survey.geojson   ' + nRecords + ' records (EPSG:4326)',
-    '  photos/          ' + nPhotos + ' photo files',
-    '  survey.qml       layer style: attribute form + map tip',
+    '  survey.geojson   ' + nRecords + ' records, standard GeoJSON (EPSG:4326 / WGS 84)',
+    '  photos/          ' + nPhotos + ' photo files (JPEG)',
+    '  survey.qml       optional QGIS layer style (attribute form + map tip)',
+    '  README.txt       this file',
     '',
-    'How to use',
-    '  1. Unzip this archive into a folder.',
-    '  2. Create a QGIS project and SAVE IT INTO THAT SAME FOLDER.',
-    '     The photo paths are relative to the project file, so this matters.',
-    '  3. Drag survey.geojson into QGIS.',
-    '  4. Layer Properties > Symbology > Style (bottom) > Load Style >',
-    '     choose survey.qml. This loads both the attribute form and the map tip.',
-    '  5. Click a point with the Identify tool to see all attributes and photos.',
+    'The data is plain GeoJSON and opens in QGIS, ArcGIS Pro, and any GIS or',
+    'library that reads GeoJSON. Photos are ordinary JPEG files in photos/, and',
+    'each record stores their RELATIVE paths in the fields ' + photoFields + '.',
+    '',
+    'IMPORTANT - keep the folder together',
+    '  Unzip the archive and keep survey.geojson and photos/ side by side.',
+    '  Save your GIS project file INTO THAT SAME FOLDER: the photo paths are',
+    '  relative, so a project saved elsewhere will load the attributes but not',
+    '  the images.',
+    '',
+    'QGIS (style file included)',
+    '  1. Save the project into the unzipped folder.',
+    '  2. Drag survey.geojson into QGIS.',
+    '  3. Layer Properties > Symbology > Style (bottom) > Load Style >',
+    '     choose survey.qml. This loads the attribute form and the map tip.',
+    '  4. Click a point with the Identify tool to see all attributes and photos.',
     '     For hover previews, enable View > Show Map Tips.',
     '',
-    'If photos do not appear in the form',
-    '  Layer Properties > Attribute Form > select field photo1 >',
-    '  Widget Type = Attachment >',
-    '  Integrated Document Viewer = Image >',
-    '  Relative Paths = Relative to Project Path.',
-    '  Repeat for photo2 ... photo' + maxPhotos + '.',
+    '  If photos do not appear in the form:',
+    '    Layer Properties > Attribute Form > select field photo1 >',
+    '    Widget Type = Attachment >',
+    '    Integrated Document Viewer = Image >',
+    '    Relative Paths = Relative to Project Path.',
+    '    Repeat for the remaining photo fields.',
     '',
-    'Fields: record_id, timestamp, inspector, inspector_id, organization,',
-    'mission, asset_type, address, osm_id, osm_name, damage_scale,',
-    'damage_grade, structural, habitability, loss_ratio, urgency, follow_up,',
-    'fatalities, injured, notes, asset_ref, asset_detail, photo_count,',
-    'photo1 .. photo' + maxPhotos + ', later_batches',
+    'ArcGIS Pro',
+    '  Add survey.geojson directly, or convert it with the JSON To Features tool.',
+    '  The ' + photoFields + ' fields hold relative paths to the images; configure',
+    '  them as hyperlinks in the pop-up, or use the Add Attachments tool with',
+    '  those paths as the match source.',
+    '',
+    'Other tools',
+    '  Python (geopandas), R (sf), Leaflet, Mapbox and most web mapping libraries',
+    '  read this file directly. The photo fields are plain text paths.',
+    '',
+    'Fields',
+    '  record_id, timestamp, inspector, inspector_id, organization, mission,',
+    '  asset_type, address, osm_id, osm_name, damage_scale, damage_grade,',
+    '  structural, habitability, loss_ratio, urgency, follow_up, fatalities,',
+    '  injured, notes, asset_ref, asset_detail, photo_count, ' + photoFields + ',',
+    '  later_batches',
     '',
     'How to cite',
     '  ' + CITATION_TEXT,
@@ -2952,14 +2973,14 @@ function qgisReadme(maxPhotos, nRecords, nPhotos) {
   ].join('\n');
 }
 
-function qgisDamageGrade(r) {
+function damageGradeOf(r) {
   if (r.damageScale === 'ems98') return r.emsGrade || '';
   if (r.damageScale === 'hazus') return r.hazusState || '';
   if (r.damageScale === 'custom') return r.customCondition || '';
   return '';
 }
 
-function qgisAssetDetail(r) {
+function assetDetailOf(r) {
   var d = [];
   if (r.assetType === 'Building') {
     if (r.buildingUse) d.push('Use: ' + r.buildingUse);
@@ -2993,12 +3014,12 @@ function qgisAssetDetail(r) {
   return d.join('; ');
 }
 
-async function exportQGISPackage() {
+async function exportGISPackage() {
   if (typeof JSZip === 'undefined') { showToast('ZIP library not loaded - check your connection'); return; }
   const records = await dbGetAll();
   if (!records.length) { showToast('No records to export'); return; }
 
-  showToast('Building QGIS package...');
+  showToast('Building GIS package...');
   const zip = new JSZip();
   const photosDir = zip.folder('photos');
 
@@ -3008,7 +3029,7 @@ async function exportQGISPackage() {
   const features = [];
   for (const r of records) {
     if (!r.lat || !r.lng) continue;
-    const base = qgisSafe(r.id) + '_' + qgisSafe((r.address || '').slice(0, 30));
+    const base = safeName(r.id) + '_' + safeName((r.address || '').slice(0, 30));
     const props = {
       record_id: r.id,
       timestamp: r.timestamp || '',
@@ -3021,7 +3042,7 @@ async function exportQGISPackage() {
       osm_id: r.osmId || '',
       osm_name: r.osmName || '',
       damage_scale: r.damageScale || '',
-      damage_grade: qgisDamageGrade(r),
+      damage_grade: damageGradeOf(r),
       structural: r.emsStructural || '',
       habitability: r.habitability || '',
       loss_ratio: r.hazusLossRatio || '',
@@ -3031,7 +3052,7 @@ async function exportQGISPackage() {
       injured: r.injured || '',
       notes: r.notes || '',
       asset_ref: r.assetRef || '',
-      asset_detail: qgisAssetDetail(r),
+      asset_detail: assetDetailOf(r),
       photo_count: (r.photos || []).length,
       later_batches: (r.laterPhotos || []).map(function(x) { return x.camera + ' [' + x.fileRange + ']'; }).join(' | ')
     };
@@ -3057,16 +3078,16 @@ async function exportQGISPackage() {
     features: features
   }, null, 2));
   zip.file('survey.qml', qgisQml(maxPhotos));
-  zip.file('README.txt', qgisReadme(maxPhotos, features.length, totalPhotos));
+  zip.file('README.txt', packageReadme(maxPhotos, features.length, totalPhotos));
 
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'FieldSurvey_QGIS_' + qgisSafe(session.mission) + '_' + session.date + '.zip';
+  a.download = 'FieldSurvey_GIS_' + safeName(session.mission) + '_' + session.date + '.zip';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(url); }, 3000);
-  showToast('QGIS package: ' + features.length + ' records, ' + totalPhotos + ' photos (' + (blob.size / 1048576).toFixed(1) + ' MB)');
+  showToast('GIS package: ' + features.length + ' records, ' + totalPhotos + ' photos (' + (blob.size / 1048576).toFixed(1) + ' MB)');
 }
 
 
@@ -3196,7 +3217,7 @@ const CITATION_TEXT = 'Yurdakul, Ö. (2026). FieldSurvey: A web application for 
   + 'Faculty of Transport Engineering, University of Pardubice. '
   + 'https://github.com/ozguryurdakul/reconnaissance';
 
-const APP_VERSION = 'v1.11';
+const APP_VERSION = 'v1.12';
 
 function copyCitation() {
   const done = function() { showToast('Citation copied'); };
