@@ -70,6 +70,11 @@
   }
   .nav-btn.active { color: var(--primary); }
   .nav-btn svg { width: 22px; height: 22px; }
+  /* six tabs: trim the label so nothing wraps on a narrow phone */
+  @media (max-width: 420px) {
+    .nav-btn { font-size: 9px; letter-spacing: 0; gap: 2px; }
+    .nav-btn svg { width: 20px; height: 20px; }
+  }
 
   /* ── SCREENS ── */
   .screen {
@@ -194,10 +199,10 @@
   .chip.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
   .chip.damage-none { }
   .chip.damage-1.selected { background: #2ecc71; border-color: #2ecc71; }
-  .chip.damage-2.selected { background: #f1c40f; border-color: #f1c40f; color: var(--text); }
-  .chip.damage-3.selected { background: #e67e22; border-color: #e67e22; }
-  .chip.damage-4.selected { background: #e74c3c; border-color: #e74c3c; }
-  .chip.damage-5.selected { background: #8e44ad; border-color: #8e44ad; }
+  .chip.damage-2.selected { background: #ffd43b; border-color: #ffd43b; color: var(--text); }
+  .chip.damage-3.selected { background: #fd7e14; border-color: #fd7e14; }
+  .chip.damage-4.selected { background: #c92a2a; border-color: #c92a2a; }
+  .chip.damage-5.selected { background: #6b0f12; border-color: #6b0f12; }
 
   /* Damage scale sections */
   .scale-section { display: none; flex-direction: column; gap: 14px; }
@@ -286,10 +291,10 @@
   }
   .badge-none { background: #ecf0f1; color: #7f8c8d; }
   .badge-1 { background: #d5f5e3; color: #1e8449; }
-  .badge-2 { background: #fef9e7; color: #d4ac0d; }
-  .badge-3 { background: #fdebd0; color: #ca6f1e; }
-  .badge-4 { background: #fadbd8; color: #c0392b; }
-  .badge-5 { background: #e8daef; color: #7d3c98; }
+  .badge-2 { background: #fff9db; color: #a07800; }
+  .badge-3 { background: #ffeeda; color: #c2570a; }
+  .badge-4 { background: #ffe3e3; color: #a51d1d; }
+  .badge-5 { background: #f3dcdc; color: #6b0f12; }
   .record-title { font-size: 15px; font-weight: 700; flex: 1; }
   .record-meta { font-size: 12px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 6px; }
   .record-meta span { display: flex; align-items: center; gap: 3px; }
@@ -302,6 +307,19 @@
   .record-actions .btn-sm { flex: 1 1 auto; min-width: 0; white-space: nowrap; }
   .record-actions .ra-edit { flex: 1 1 100%; }
   .record-actions .ra-delete { flex: 0 0 auto; }
+
+  /* ── SUMMARY SCREEN ── */
+  .sm-card {
+    background: var(--white); border-radius: var(--radius); padding: 16px;
+    margin-bottom: 12px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+  }
+  .sm-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .sm-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .sm-cell { cursor: pointer; transition: outline 0.1s; }
+  .sm-cell:hover { outline: 2px solid var(--text); outline-offset: -2px; }
+  .sm-axis { font-size: 10px; fill: var(--text-muted); }
+  .sm-axis-title { font-size: 11px; font-weight: 700; fill: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.6px; }
 
   /* ── EXPORT SCREEN ── */
   #screen-export { overflow-y: auto; padding: 16px; }
@@ -339,6 +357,16 @@
     position: fixed; inset: 0; background: var(--primary); z-index: 2000;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 32px 24px;
+    /* The card is taller than a small phone screen, so the overlay must scroll
+       or the Start button sits below the fold with no way to reach it. */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* once the content is taller than the screen, stop centring and let it scroll */
+  @media (max-height: 760px) {
+    #setup-overlay { justify-content: flex-start; padding-top: 20px; padding-bottom: 32px; }
+    .setup-logo { font-size: 26px; }
+    .setup-sub { margin-bottom: 18px; }
   }
   #setup-overlay.hidden { display: none; }
   .setup-logo { font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 4px; letter-spacing: -1px; }
@@ -364,13 +392,47 @@
     width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
     border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
-  .mp-none { background: #95a5a6; }
+  .mp-none { background: #adb5bd; }
   .mp-1 { background: #2ecc71; }
-  .mp-2 { background: #f1c40f; }
-  .mp-3 { background: #e67e22; }
-  .mp-4 { background: #e74c3c; }
-  .mp-5 { background: #8e44ad; }
+  .mp-2 { background: #ffd43b; }
+  .mp-3 { background: #fd7e14; }
+  .mp-4 { background: #c92a2a; }
+  .mp-5 { background: #6b0f12; }
   .mp-pending { background: var(--primary); }
+
+  /* Marker shape carries the map mode, so the two severity ramps are never
+     confused with each other - and it survives greyscale printing. */
+  .marker-shape { width: 26px; height: 26px; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+  .shape-damage      { border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }  /* teardrop */
+  .shape-consequence { border-radius: 4px; }                                        /* square  */
+  .shape-priority    { border-radius: 50%; }                                        /* circle  */
+
+  #map-mode {
+    /* right-aligned: Leaflet's zoom controls own the top-left corner */
+    position: absolute; top: 12px; right: 12px; z-index: 500;
+    background: var(--white); border-radius: 10px; box-shadow: var(--shadow-sm);
+    display: flex; overflow: hidden; border: 1px solid var(--border);
+  }
+  #map-mode button {
+    border: none; background: none; padding: 8px 12px; font-size: 12px; font-weight: 700;
+    color: var(--text-muted); cursor: pointer; white-space: nowrap;
+  }
+  #map-mode button.active { background: var(--primary); color: #fff; }
+
+  #map-legend {
+    position: absolute; bottom: 20px; left: 12px; z-index: 500;
+    background: rgba(255,255,255,0.95); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow-sm);
+    font-size: 11px; max-width: 190px;
+  }
+  #map-legend .lg-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--text-muted); margin-bottom: 6px; font-size: 10px; }
+  #map-legend .lg-row { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+  #map-legend .lg-swatch { width: 12px; height: 12px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.15); }
+  #map-legend .lg-swatch.shape-damage { border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+  #map-legend .lg-swatch.shape-consequence { border-radius: 2px; }
+  #map-legend .lg-swatch.shape-priority { border-radius: 50%; }
+  @media (max-width: 420px) { #map-legend { max-width: 150px; font-size: 10px; } }
 
   /* Divider */
   .divider { height: 1px; background: var(--border); margin: 4px 0; }
@@ -391,7 +453,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v1.12</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.0</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -414,9 +476,7 @@
       <label class="field-label">Default Damage Scale</label>
       <select class="field-input" id="setup-scale">
         <option value="none">None (inventory only)</option>
-        <option value="ems98" selected>EMS-98</option>
-        <option value="hazus">HAZUS-MH</option>
-        <option value="custom">Custom</option>
+        <option value="ems98" selected>EMS-98 (interim)</option>
       </select>
     </div>
     <div class="field-group">
@@ -446,6 +506,12 @@
 <!-- MAP -->
 <div class="screen active" id="screen-map">
   <div id="map"></div>
+  <div id="map-mode">
+    <button data-mode="damage" onclick="setMapMode('damage')">Damage</button>
+    <button data-mode="consequence" onclick="setMapMode('consequence')">Consequence</button>
+    <button data-mode="priority" onclick="setMapMode('priority')">Priority</button>
+  </div>
+  <div id="map-legend"></div>
   <div id="osm-hint">
     📍 Tap the map to set location
     <button onclick="cancelPickMode()" style="background:rgba(255,255,255,0.25);border:none;border-radius:12px;color:#fff;padding:2px 10px;font-size:12px;cursor:pointer;font-weight:600;margin-left:6px;">← Back to form</button>
@@ -466,6 +532,49 @@
     <span class="record-count" id="rec-count">0 records</span>
   </div>
   <div id="records-list"></div>
+</div>
+
+<!-- SUMMARY -->
+<div class="screen" id="screen-summary" style="overflow-y:auto;padding:14px;">
+  <div style="font-size:19px;font-weight:800;margin-bottom:2px;">Summary</div>
+
+
+  <div class="stat-row" style="margin-bottom:14px;">
+    <div class="stat-box"><div class="stat-num" id="sm-total" style="font-size:22px;">0</div><div class="stat-label">Records</div></div>
+    <div class="stat-box"><div class="stat-num" id="sm-scored" style="font-size:22px;">0</div><div class="stat-label">Prioritised</div></div>
+    <div class="stat-box"><div class="stat-num" id="sm-unassessed" style="font-size:22px;">0</div><div class="stat-label">Not assessed</div></div>
+  </div>
+
+  <div class="sm-card">
+    <div class="sm-title">Response priority matrix</div>
+    <div class="sm-sub">Each cell shows how many records fall there. Tap a cell to see them.</div>
+    <div id="sm-matrix" style="margin-top:10px;"></div>
+    <div id="sm-matrix-note" style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6;"></div>
+  </div>
+
+  <div class="sm-card">
+    <div class="sm-title">Response priority</div>
+    <div id="sm-chart-priority" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="sm-card">
+    <div class="sm-title">Damage states</div>
+    <div id="sm-chart-ds" style="margin-top:8px;"></div>
+    <div id="sm-service-split" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="sm-card">
+    <div class="sm-title">Consequence for the community</div>
+    <div id="sm-chart-cons" style="margin-top:8px;"></div>
+  </div>
+
+  <div id="sm-cell-list" class="sm-card" style="display:none;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="sm-title" id="sm-cell-title" style="flex:1;"></div>
+      <button class="btn btn-secondary btn-sm" onclick="closeCellList()">Close</button>
+    </div>
+    <div id="sm-cell-records" style="margin-top:8px;"></div>
+  </div>
 </div>
 
 <!-- EXPORT -->
@@ -501,7 +610,7 @@
   <div class="export-card" style="border-color: var(--primary);">
     <div class="export-icon">🗂️</div>
     <h3>GIS Package (ZIP) &nbsp;<span style="background:var(--success);color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;vertical-align:middle;">WITH PHOTOS</span></h3>
-    <p>A ZIP containing <code>survey.geojson</code> (standard GeoJSON, EPSG:4326), a <code>photos/</code> folder with every photo as a real file, and a README. Opens in QGIS, ArcGIS Pro, or anything that reads GeoJSON — a ready-made QGIS style file is included.</p>
+    <p>A ZIP containing <code>survey.geojson</code> (standard GeoJSON, EPSG:4326), a <code>photos/</code> folder with every photo as a real file, a README, and three ready-made style files — damage state, consequence and response priority. Add the layer three times and apply one style to each.</p>
     <p style="background:var(--primary-light);color:var(--primary);border-radius:8px;padding:10px 12px;font-weight:600;">
       Unzip it and <strong>save your GIS project into that same folder</strong> — the photo paths are relative to the project file. The README has the per-software steps.
     </p>
@@ -619,11 +728,9 @@
       <div class="field-group">
         <label class="field-label">Default Damage Scale</label>
         <select class="field-input" id="set-scale">
-          <option value="none">None (inventory only)</option>
-          <option value="ems98">EMS-98</option>
-          <option value="hazus">HAZUS-MH</option>
-          <option value="custom">Custom</option>
-        </select>
+        <option value="none">None (inventory only)</option>
+        <option value="ems98" selected>EMS-98 (interim)</option>
+      </select>
       </div>
       <button class="btn btn-primary btn-sm" onclick="saveSettings()" style="align-self:flex-start">Save Settings</button>
     </div>
@@ -686,7 +793,7 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">v1.12</span>
+        Version: <span id="app-version">v2.0</span>
       </div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
@@ -717,6 +824,10 @@
   <button class="nav-btn" onclick="switchTab('records',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
     Records
+  </button>
+  <button class="nav-btn" onclick="switchTab('summary',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/></svg>
+    Summary
   </button>
   <button class="nav-btn" onclick="switchTab('export',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
@@ -971,9 +1082,7 @@
         <label class="field-label">Damage Scale</label>
         <select class="field-input" id="f-scale-select" onchange="switchScale(this.value)">
           <option value="none">None (inventory only)</option>
-          <option value="ems98">EMS-98</option>
-          <option value="hazus">HAZUS-MH</option>
-          <option value="custom">Custom</option>
+          <option value="ems98">EMS-98 (interim)</option>
         </select>
       </div>
     </div>
@@ -1018,117 +1127,47 @@
           </select>
         </div>
         <div class="field-group">
-          <label class="field-label">Habitability</label>
-          <div class="chip-group" id="habit-chips">
-            <div class="chip damage-1" onclick="selectChip(this,'habit-chips','f-habitability')">Usable</div>
-            <div class="chip damage-3" onclick="selectChip(this,'habit-chips','f-habitability')">Restricted</div>
-            <div class="chip damage-4" onclick="selectChip(this,'habit-chips','f-habitability')">Unusable</div>
-          </div>
-          <input type="hidden" id="f-habitability">
+          <label class="field-label">Operational Status</label>
+          <div class="field-hint">Derived from the damage state.</div>
+          <div id="operational-status" style="border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;
+               background:var(--bg);color:var(--text-muted);">Set a damage state to see the operational status.</div>
         </div>
       </div>
 
-      <!-- HAZUS -->
-      <div class="scale-section" id="scale-hazus">
-        <div class="scale-title">HAZUS-MH Classification</div>
-        <div class="field-group">
-          <label class="field-label">Damage State</label>
-          <div class="chip-group" id="hazus-chips">
-            <div class="chip damage-none" onclick="selectChip(this,'hazus-chips','f-hazus-state')">None</div>
-            <div class="chip damage-1" onclick="selectChip(this,'hazus-chips','f-hazus-state')">Slight</div>
-            <div class="chip damage-2" onclick="selectChip(this,'hazus-chips','f-hazus-state')">Moderate</div>
-            <div class="chip damage-3" onclick="selectChip(this,'hazus-chips','f-hazus-state')">Extensive</div>
-            <div class="chip damage-4" onclick="selectChip(this,'hazus-chips','f-hazus-state')">Complete</div>
-          </div>
-          <input type="hidden" id="f-hazus-state">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Loss Ratio Estimate (%)</label>
-          <div class="slider-row">
-            <input type="range" id="f-hazus-loss" min="0" max="100" value="0" oninput="document.getElementById('hazus-loss-val').textContent=this.value+'%'">
-            <span class="slider-val" id="hazus-loss-val">0%</span>
-          </div>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Functionality (%)</label>
-          <div class="slider-row">
-            <input type="range" id="f-hazus-func" min="0" max="100" value="100" oninput="document.getElementById('hazus-func-val').textContent=this.value+'%'">
-            <span class="slider-val" id="hazus-func-val">100%</span>
-          </div>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Occupancy Post-Disaster</label>
-          <select class="field-input" id="f-hazus-occupancy">
-            <option value="">— Select —</option>
-            <option>Inspected — No Restriction</option>
-            <option>Restricted Use</option>
-            <option>Unsafe — Do Not Enter</option>
-          </select>
-        </div>
-      </div>
 
-      <!-- CUSTOM -->
-      <div class="scale-section" id="scale-custom">
-        <div class="scale-title">Custom Assessment</div>
-        <div class="field-group">
-          <label class="field-label">Overall Condition</label>
-          <div class="chip-group" id="custom-chips">
-            <div class="chip damage-1" onclick="selectChip(this,'custom-chips','f-custom-cond')">Good</div>
-            <div class="chip damage-2" onclick="selectChip(this,'custom-chips','f-custom-cond')">Fair</div>
-            <div class="chip damage-3" onclick="selectChip(this,'custom-chips','f-custom-cond')">Poor</div>
-            <div class="chip damage-4" onclick="selectChip(this,'custom-chips','f-custom-cond')">Critical</div>
-            <div class="chip damage-5" onclick="selectChip(this,'custom-chips','f-custom-cond')">Failed</div>
-          </div>
-          <input type="hidden" id="f-custom-cond">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Priority Action</label>
-          <select class="field-input" id="f-custom-action">
-            <option value="">— Select —</option>
-            <option>Monitor</option><option>Maintain</option><option>Repair</option>
-            <option>Emergency Repair</option><option>Demolish</option>
-          </select>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Custom Score (1–10)</label>
-          <div class="slider-row">
-            <input type="range" id="f-custom-score" min="1" max="10" value="5" oninput="document.getElementById('custom-score-val').textContent=this.value">
-            <span class="slider-val" id="custom-score-val">5</span>
-          </div>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Custom Field 1 Label</label>
-          <input class="field-input" id="f-custom-label1" type="text" placeholder="e.g. Crack width (mm)">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Custom Field 1 Value</label>
-          <input class="field-input" id="f-custom-val1" type="text" placeholder="Value">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Custom Field 2 Label</label>
-          <input class="field-input" id="f-custom-label2" type="text" placeholder="e.g. Settlement (mm)">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Custom Field 2 Value</label>
-          <input class="field-input" id="f-custom-val2" type="text" placeholder="Value">
-        </div>
-      </div>
 
-      <!-- Casualties (all scales) -->
+      <!-- Consequence for the community: independent of damage, and the other
+           axis of the priority matrix -->
       <div class="divider"></div>
       <div class="field-group">
-        <label class="field-label">Casualties / Affected Persons</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div>
-            <div class="field-hint">Fatalities</div>
-            <input class="field-input" id="f-fatalities" type="number" min="0" placeholder="0">
-          </div>
-          <div>
-            <div class="field-hint">Injured</div>
-            <input class="field-input" id="f-injured" type="number" min="0" placeholder="0">
-          </div>
+        <label class="field-label">Consequence for the Community</label>
+        <div class="field-hint">If this asset stays out of service: detour length, people cut off, emergency access, economic effect. Judge this independently of how damaged it looks.</div>
+        <div class="chip-group" id="consequence-chips">
+          <div class="chip damage-1" onclick="selectChip(this,'consequence-chips','f-consequence')">Minor</div>
+          <div class="chip damage-2" onclick="selectChip(this,'consequence-chips','f-consequence')">Limited</div>
+          <div class="chip damage-3" onclick="selectChip(this,'consequence-chips','f-consequence')">Moderate</div>
+          <div class="chip damage-4" onclick="selectChip(this,'consequence-chips','f-consequence')">Significant</div>
+          <div class="chip damage-5" onclick="selectChip(this,'consequence-chips','f-consequence')">Extreme</div>
         </div>
+        <input type="hidden" id="f-consequence">
       </div>
+
+      <div id="priority-preview" style="display:none;border-radius:10px;padding:12px;color:#fff;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;opacity:0.85;">Response priority</div>
+        <div id="priority-preview-text" style="font-size:17px;font-weight:800;margin-top:2px;"></div>
+        <div id="priority-preview-sub" style="font-size:12px;opacity:0.9;margin-top:2px;"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Follow-up Required?</label>
+        <div class="field-hint">Does this asset need a return visit or a detailed inspection?</div>
+        <div class="chip-group" id="followup-chips">
+          <div class="chip damage-1" onclick="selectChip(this,'followup-chips','f-followup')">No</div>
+          <div class="chip damage-3" onclick="selectChip(this,'followup-chips','f-followup')">Yes</div>
+        </div>
+        <input type="hidden" id="f-followup">
+      </div>
+
     </div>
 
     <!-- PAGE 4: PHOTOS -->
@@ -1169,24 +1208,6 @@
       <div class="field-group">
         <label class="field-label">Field Notes</label>
         <textarea class="field-input" id="f-notes" placeholder="Observations, hazards, recommendations, access notes…" rows="4"></textarea>
-      </div>
-      <div class="field-group">
-        <label class="field-label">Urgency Level</label>
-        <div class="chip-group" id="urgency-chips">
-          <div class="chip damage-1" onclick="selectChip(this,'urgency-chips','f-urgency')">Low</div>
-          <div class="chip damage-2" onclick="selectChip(this,'urgency-chips','f-urgency')">Medium</div>
-          <div class="chip damage-3" onclick="selectChip(this,'urgency-chips','f-urgency')">High</div>
-          <div class="chip damage-4" onclick="selectChip(this,'urgency-chips','f-urgency')">Critical</div>
-        </div>
-        <input type="hidden" id="f-urgency">
-      </div>
-      <div class="field-group">
-        <label class="field-label">Follow-up Required?</label>
-        <div class="chip-group" id="followup-chips">
-          <div class="chip damage-1" onclick="selectChip(this,'followup-chips','f-followup')">No</div>
-          <div class="chip damage-3" onclick="selectChip(this,'followup-chips','f-followup')">Yes</div>
-        </div>
-        <input type="hidden" id="f-followup">
       </div>
 
       <!-- Summary card -->
@@ -1249,6 +1270,186 @@ let userMarker = null;
 let recordMarkers = {};
 let map;
 let DB;
+
+// ══════════════════════════════════════════════
+// DAMAGE STATES, CONSEQUENCE, PRIORITY MATRIX
+// ══════════════════════════════════════════════
+// Severity ramp used for both damage state and consequence. Hues follow the
+// traffic-light convention the field expects; the steps were checked so that
+// every adjacent pair stays apart for normal and colour-deficient vision
+// (worst adjacent pair dE 19.8 normal, 9.8 protan).
+const SEVERITY_COLORS = ['#2ecc71', '#ffd43b', '#fd7e14', '#c92a2a', '#6b0f12'];
+const UNASSESSED_COLOR = '#adb5bd';
+
+// Interim scale: EMS-98. Replace labels here with the DS1-DS5 definitions from
+// Yurdakul et al. (2026) when available - nothing else needs to change.
+const DAMAGE_STATES = [
+  { index: 1, label: 'D1 — Negligible',  short: 'DS1', color: SEVERITY_COLORS[0] },
+  { index: 2, label: 'D2 — Slight',      short: 'DS2', color: SEVERITY_COLORS[1] },
+  { index: 3, label: 'D3 — Moderate',    short: 'DS3', color: SEVERITY_COLORS[2] },
+  { index: 4, label: 'D4 — Heavy',       short: 'DS4', color: SEVERITY_COLORS[3] },
+  { index: 5, label: 'D5 — Destruction', short: 'DS5', color: SEVERITY_COLORS[4] }
+];
+
+// Consequence for the community if the asset stays out of service - deliberately
+// independent of damage, which is what makes the priority matrix informative.
+const CONSEQUENCE_LEVELS = [
+  { index: 1, label: 'Minor',       color: SEVERITY_COLORS[0] },
+  { index: 2, label: 'Limited',     color: SEVERITY_COLORS[1] },
+  { index: 3, label: 'Moderate',    color: SEVERITY_COLORS[2] },
+  { index: 4, label: 'Significant', color: SEVERITY_COLORS[3] },
+  { index: 5, label: 'Extreme',     color: SEVERITY_COLORS[4] }
+];
+
+// PROVISIONAL WEIGHTS - transcribed from a photographed PIARC slide, so they are
+// not yet verified against the source document and one cell was obscured in the
+// photo. Structure is deliberate: the bottom row is flat (a failed asset nobody
+// needs is still lowest priority) and the top-left is high (an undamaged asset
+// the community depends on outranks moderate damage elsewhere).
+// Indexed [consequenceIndex][damageIndex], both 1..5.
+const PRIORITY_MATRIX = {
+  // DS3 is the serviceability limit: at DS3 the crossing is already lost, so where
+  // the community depends on it the response is top-tier regardless of how much
+  // structure remains. DS3 is lifted into the Very high band for the two highest
+  // consequence levels, while staying below DS4 and DS5 so a work list sorted by
+  // score still orders sensibly.
+  5: { 1: 20, 2: 25, 3: 40, 4: 45, 5: 50 },  // Extreme      (DS3 raised from 35)
+  4: { 1: 10, 2: 20, 3: 38, 4: 40, 5: 45 },  // Significant  (DS3 raised from 25)
+  3: { 1:  3, 2: 15, 3: 15, 4: 25, 5: 30 },  // Moderate
+  2: { 1:  2, 2: 10, 3: 10, 4: 10, 5: 10 },  // Limited
+  1: { 1:  1, 2:  1, 3:  1, 4:  1, 5:  1 }   // Minor
+};
+
+// Score -> band. Thresholds follow the colour grouping of the source matrix.
+const PRIORITY_BANDS = [
+  { max:  3, label: 'Low',       color: '#2ecc71' },
+  { max: 15, label: 'Medium',    color: '#ffd43b' },
+  { max: 35, label: 'High',      color: '#c92a2a' },
+  { max: 99, label: 'Very high', color: '#5b3a29' }
+];
+
+// Older records may hold HAZUS or Custom grades. The inputs are gone but the
+// data still reads, so those records keep their place on the map and in exports.
+const LEGACY_DS_INDEX = {
+  hazus:  { 'None': 1, 'Slight': 2, 'Moderate': 3, 'Extensive': 4, 'Complete': 5 },
+  custom: { 'Good': 1, 'Fair': 2, 'Poor': 3, 'Critical': 4, 'Failed': 5 }
+};
+
+
+// ── Operational status ──────────────────────────
+// Follows directly from the damage state (Yurdakul et al. 2026, Table 3), so it is
+// derived rather than entered - the inspector cannot contradict their own DS.
+const OPERATIONAL_STATUS = [
+  { ds: 1, short: 'Fully operational',    full: 'Fully operational',                                                 serviceable: true  },
+  { ds: 2, short: 'Limited service',      full: 'Operation with caution / limited service (full recovery in days)',  serviceable: true  },
+  { ds: 3, short: 'Interim suspension',   full: 'Interim suspension — service paused temporarily (recovery in weeks)', serviceable: false },
+  { ds: 4, short: 'Long-term suspension', full: 'Long-term service suspension (full recovery in months)',            serviceable: false },
+  { ds: 5, short: 'Closed',               full: 'Closed until reconstruction or replacement',                        serviceable: false }
+];
+
+function operationalStatusOf(r) {
+  const i = dsIndexOf(r);
+  return i ? OPERATIONAL_STATUS[i - 1] : null;
+}
+// DS1-DS2 remain in service; DS3 is the first suspension. Null when no DS is set.
+function isServiceable(r) {
+  const o = operationalStatusOf(r);
+  return o ? o.serviceable : null;
+}
+function serviceabilityLabel(r) {
+  const s = isServiceable(r);
+  return s === null ? '' : (s ? 'Serviceable' : 'Non-serviceable');
+}
+
+// Read-only readout on the damage page, so the DS choice shows its consequence.
+function updateOperationalStatus() {
+  const box = document.getElementById('operational-status');
+  if (!box) return;
+  const o = operationalStatusOf({ damageScale: effectiveDamageScale(), emsGrade: val('f-ems-grade') });
+  if (!o) {
+    box.style.background = 'var(--bg)';
+    box.style.color = 'var(--text-muted)';
+    box.innerHTML = 'Set a damage state to see the operational status.';
+    return;
+  }
+  const color = SEVERITY_COLORS[o.ds - 1];
+  box.style.background = color;
+  box.style.color = (o.ds === 2) ? '#1a2332' : '#fff';
+  box.innerHTML = '<strong>' + o.full + '</strong>' +
+    '<div style="font-size:12px;opacity:0.9;margin-top:2px;">' +
+    (o.serviceable ? 'Serviceable' : 'Non-serviceable') + '</div>';
+}
+
+// ── derived values ──────────────────────────────
+function dsIndexOf(r) {
+  if (!r) return null;
+  if (r.damageScale === 'ems98' && r.emsGrade) {
+    const m = DAMAGE_STATES.find(d => d.label === r.emsGrade);
+    if (m) return m.index;
+    const n = parseInt(String(r.emsGrade).replace(/[^1-5]/, ''), 10);
+    return (n >= 1 && n <= 5) ? n : null;
+  }
+  if (r.damageScale === 'hazus'  && r.hazusState)      return LEGACY_DS_INDEX.hazus[r.hazusState]  || null;
+  if (r.damageScale === 'custom' && r.customCondition) return LEGACY_DS_INDEX.custom[r.customCondition] || null;
+  return null;
+}
+
+function consequenceIndexOf(r) {
+  if (!r || !r.consequence) return null;
+  const m = CONSEQUENCE_LEVELS.find(c => c.label === r.consequence);
+  return m ? m.index : null;
+}
+
+function priorityOf(r) {
+  const d = dsIndexOf(r), q = consequenceIndexOf(r);
+  if (!d || !q) return null;
+  const score = PRIORITY_MATRIX[q][d];
+  const band = PRIORITY_BANDS.find(b => score <= b.max) || PRIORITY_BANDS[PRIORITY_BANDS.length - 1];
+  return { score: score, band: band.label, color: band.color, ds: d, consequence: q };
+}
+
+function damageColorOf(r) { const i = dsIndexOf(r);          return i ? SEVERITY_COLORS[i-1] : UNASSESSED_COLOR; }
+function consequenceColorOf(r) { const i = consequenceIndexOf(r); return i ? SEVERITY_COLORS[i-1] : UNASSESSED_COLOR; }
+function priorityColorOf(r) { const p = priorityOf(r);       return p ? p.color : UNASSESSED_COLOR; }
+
+function dsLabelOf(r) {
+  const i = dsIndexOf(r);
+  if (!i) return '';
+  if (r.damageScale === 'ems98') return r.emsGrade || '';
+  return (r.hazusState || r.customCondition || '') + ' (' + DAMAGE_STATES[i-1].short + ')';
+}
+
+// Null-safe form access: fields for retired scales no longer exist in the DOM.
+function val(id)        { const e = document.getElementById(id); return e ? e.value : ''; }
+
+// A record saved under a retired scale (HAZUS, Custom) has no matching option in
+// the select, so the select silently reports something else. Editing such a record
+// must not overwrite its stored scale - that would orphan its damage grade.
+// The record currently open in the form, and its scale if that scale has been
+// retired. Both let the form reason about a record whose scale it cannot display.
+let editingRecord = null;
+let editingRetiredScale = null;
+
+// The scale to save: a retired one is kept, otherwise whatever the select says.
+function effectiveDamageScale() {
+  return editingRetiredScale || val('f-scale-select');
+}
+
+// What the form currently describes, merged over the record being edited so that
+// a legacy record's stored grade still contributes to the live priority preview.
+function formRecordSnapshot() {
+  const base = editingRecord ? Object.assign({}, editingRecord) : {};
+  base.damageScale = effectiveDamageScale();
+  base.emsGrade = val('f-ems-grade');
+  base.consequence = val('f-consequence');
+  return base;
+}
+
+function scaleSelectHas(v) {
+  const sel = document.getElementById('f-scale-select');
+  return !!(sel && Array.prototype.some.call(sel.options, function(o) { return o.value === v; }));
+}
+function setVal(id, v)  { const e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); }
 
 // ══════════════════════════════════════════════
 // INDEXEDDB
@@ -1474,7 +1675,7 @@ function setPendingLocation(lat, lng) {
   pendingLat = lat; pendingLng = lng;
   document.getElementById('loc-coords').textContent = lat.toFixed(6) + ', ' + lng.toFixed(6);
   document.getElementById('loc-address').textContent = 'Fetching address…';
-  if (userMarker) map.removeLayer(userMarker);
+  if (map && userMarker) map.removeLayer(userMarker);
   userMarker = L.marker([lat, lng], { icon: createPinIcon('pending'), draggable: true }).addTo(map);
   userMarker.on('dragend', function(e) {
     const p = e.target.getLatLng();
@@ -1541,11 +1742,72 @@ function exitMapClickMode() {
 }
 
 function createPinIcon(colorClass) {
+  // kept for the draggable "pending location" pin
   return L.divIcon({
     className: '',
     html: `<div class="marker-pin mp-${colorClass}"></div>`,
     iconSize: [30, 30], iconAnchor: [15, 28], popupAnchor: [0, -28]
   });
+}
+
+// ── map colour modes ────────────────────────────
+let mapMode = 'damage';
+
+function recordColorForMode(r, mode) {
+  if (mode === 'consequence') return consequenceColorOf(r);
+  if (mode === 'priority')    return priorityColorOf(r);
+  return damageColorOf(r);
+}
+
+function createModeIcon(r, mode) {
+  const color = recordColorForMode(r, mode);
+  const shape = 'shape-' + mode;
+  const anchor = (mode === 'damage') ? [13, 25] : [13, 13];
+  return L.divIcon({
+    className: '',
+    html: '<div class="marker-shape ' + shape + '" style="background:' + color + '"></div>',
+    iconSize: [26, 26], iconAnchor: anchor, popupAnchor: [0, -(anchor[1])]
+  });
+}
+
+function setMapMode(mode) {
+  mapMode = mode;
+  try { localStorage.setItem('fs_map_mode', mode); } catch(e) {}
+  document.querySelectorAll('#map-mode button').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('data-mode') === mode);
+  });
+  renderMapLegend();
+  refreshAllMarkers();
+}
+
+function renderMapLegend() {
+  const el = document.getElementById('map-legend');
+  if (!el) return;
+  let title, rows;
+  if (mapMode === 'consequence') {
+    title = 'Consequence';
+    rows = CONSEQUENCE_LEVELS.map(function(x) { return [x.color, x.label]; });
+  } else if (mapMode === 'priority') {
+    title = 'Response priority';
+    rows = PRIORITY_BANDS.map(function(b) { return [b.color, b.label]; });
+  } else {
+    title = 'Damage state';
+    rows = DAMAGE_STATES.map(function(d) { return [d.color, d.label]; });
+  }
+  rows = rows.concat([[UNASSESSED_COLOR, 'Not assessed']]);
+  el.innerHTML = '<div class="lg-title">' + title + '</div>' +
+    rows.map(function(r) {
+      return '<div class="lg-row"><span class="lg-swatch shape-' + mapMode +
+             '" style="background:' + r[0] + '"></span><span>' + r[1] + '</span></div>';
+    }).join('');
+}
+
+async function refreshAllMarkers() {
+  if (!DB || !map) return;
+  const records = await dbGetAll();
+  Object.values(recordMarkers).forEach(function(m) { map.removeLayer(m); });
+  recordMarkers = {};
+  records.forEach(function(r) { addMarkerForRecord(r); });
 }
 
 function getDamageColorClass(record) {
@@ -1585,14 +1847,14 @@ async function loadRecordsOnMap() {
 }
 
 function addMarkerForRecord(r) {
-  if (!r.lat || !r.lng) return;
+  if (!map || !r.lat || !r.lng) return;
   const colorClass = getDamageColorClass(r);
   if (recordMarkers[r.id]) map.removeLayer(recordMarkers[r.id]);
   const badgeLabel = r.damageScale === 'ems98' ? (r.emsGrade || 'EMS-98')
     : r.damageScale === 'hazus' ? (r.hazusState || 'HAZUS')
     : r.damageScale === 'custom' ? (r.customCondition || 'Custom')
     : 'No Scale';
-  const badgeColor = {'1':'#2ecc71','2':'#f1c40f','3':'#e67e22','4':'#e74c3c','5':'#8e44ad'}[colorClass] || '#95a5a6';
+  const badgeColor = {'1':SEVERITY_COLORS[0],'2':SEVERITY_COLORS[1],'3':SEVERITY_COLORS[2],'4':SEVERITY_COLORS[3],'5':SEVERITY_COLORS[4]}[colorClass] || UNASSESSED_COLOR;
   const popupHtml = `
     <div style="min-width:220px;font-family:system-ui,sans-serif;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
@@ -1600,13 +1862,18 @@ function addMarkerForRecord(r) {
         <span style="background:${badgeColor};color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap;">${badgeLabel}</span>
       </div>
       <div style="font-size:12px;color:#5a6a7a;line-height:1.8;">
+        ${(function(){ const pr = priorityOf(r); return pr
+          ? '<div style="margin-bottom:4px;"><span style="background:'+pr.color+';color:'+(pr.band==='Medium'?'#1a2332':'#fff')+';border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;">PRIORITY: '+pr.band.toUpperCase()+'</span></div>'
+          : ''; })()}
+        ${(function(){ const o = operationalStatusOf(r); return o ? '<div>🚧 ' + o.short + ' (' + (o.serviceable ? 'serviceable' : 'non-serviceable') + ')</div>' : ''; })()}
         <div>🆔 <strong>${r.id}</strong></div>
         ${r.address ? `<div>🏠 ${r.address}</div>` : ''}
         <div>📍 ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</div>
         ${r.osmName ? `<div>🔗 ${r.osmName}</div>` : ''}
         ${r.inspectorName ? `<div>👤 ${r.inspectorName}${r.inspectorId ? ' ('+r.inspectorId+')' : ''}</div>` : ''}
         <div>🕐 ${r.timestamp ? r.timestamp.replace('T',' ').slice(0,16) : '—'}</div>
-        ${r.urgency ? `<div>🚨 Urgency: <strong>${r.urgency}</strong></div>` : ''}
+        ${r.consequence ? `<div>🏘 Consequence: <strong>${r.consequence}</strong></div>` : ''}
+        ${r.followUp === 'Yes' ? `<div>🔁 <strong>Follow-up required</strong></div>` : ''}
         ${r.notes ? `<div style="margin-top:4px;padding:4px 6px;background:#f0f4f8;border-radius:4px;">📝 ${r.notes.slice(0,80)}${r.notes.length>80?'…':''}</div>` : ''}
         ${(r.photos?.length||0) > 0 ? `<div>📷 ${r.photos.length} photo(s)</div>` : ''}
       </div>
@@ -1615,7 +1882,7 @@ function addMarkerForRecord(r) {
         <button onclick="flyAndClose('${r.id}')" style="flex:1;padding:6px;background:#f0f4f8;color:#1a2332;border:1px solid #d0dde8;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📋 Records</button>
       </div>
     </div>`;
-  const m = L.marker([r.lat, r.lng], { icon: createPinIcon(colorClass) })
+  const m = L.marker([r.lat, r.lng], { icon: createModeIcon(r, mapMode) })
     .addTo(map)
     .bindPopup(popupHtml, { maxWidth: 280 });
   recordMarkers[r.id] = m;
@@ -1672,6 +1939,10 @@ function closePanel() {
 }
 
 function resetForm() {
+  editingRecord = null;
+  editingRetiredScale = null;
+  // drop any temporary option added for a retired scale
+  document.querySelectorAll('.retired-scale-option').forEach(function(o) { o.remove(); });
   currentPhotos = [];
   currentLaterPhotos = [];
   pendingOSM = null;
@@ -1688,19 +1959,12 @@ function resetForm() {
    'f-bridge-type','f-bridge-spans','f-bridge-span-length','f-bridge-length','f-bridge-material','f-year-bridge','f-bridge-capacity',
    'f-wall-type','f-wall-height','f-wall-length','f-wall-material',
    'f-infra-type','f-infra-status','f-other-desc',
-   'f-ems-grade','f-ems-structural','f-ems-nonstructural','f-habitability',
-   'f-hazus-state','f-hazus-occupancy','f-custom-cond','f-custom-action',
-   'f-custom-label1','f-custom-val1','f-custom-label2','f-custom-val2',
-   'f-fatalities','f-injured','f-notes','f-urgency','f-followup'].forEach(id => {
+   'f-ems-grade','f-ems-structural','f-ems-nonstructural',
+   'f-notes','f-followup','f-consequence'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('f-hazus-loss').value = 0;
-  document.getElementById('hazus-loss-val').textContent = '0%';
-  document.getElementById('f-hazus-func').value = 100;
-  document.getElementById('hazus-func-val').textContent = '100%';
-  document.getElementById('f-custom-score').value = 5;
-  document.getElementById('custom-score-val').textContent = '5';
+  // retired HAZUS/Custom sliders no longer exist in the form
   // Deselect all chips
   document.querySelectorAll('.chip.selected').forEach(c => c.classList.remove('selected'));
 }
@@ -1714,6 +1978,8 @@ function goToPage(n) {
   document.getElementById('btn-next').style.display = n < TOTAL_PAGES - 1 ? 'flex' : 'none';
   document.getElementById('btn-submit').style.display = n === TOTAL_PAGES - 1 ? 'flex' : 'none';
   updatePageIndicator();
+  updatePriorityPreview();
+  updateOperationalStatus();
   if (n === TOTAL_PAGES - 1) updateSubmitSummary();
 }
 
@@ -1736,19 +2002,44 @@ function prevPage() {
 }
 
 function selectChip(el, groupId, hiddenId) {
-  // BUGFIX 6: scope to the chip's own container instead of matching onclick text,
-  // so a group name that is a substring of another cannot clear the wrong chips.
+  // Scoped to the chip's own container so a group name that is a substring of
+  // another cannot clear the wrong chips. Tapping the selected chip again clears
+  // it, which is the only way back to "not assessed" after a mis-tap.
   const container = el.closest('.chip-group') || document.getElementById(groupId);
   const scope = container ? container.querySelectorAll('.chip') : [];
+  const wasSelected = el.classList.contains('selected');
   scope.forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  if (hiddenId) document.getElementById(hiddenId).value = el.textContent.trim();
+  if (!wasSelected) {
+    el.classList.add('selected');
+    setVal(hiddenId, el.textContent.trim());
+  } else {
+    setVal(hiddenId, '');   // toggled off
+  }
+  updatePriorityPreview();
+  updateOperationalStatus();
 }
 
-function switchScale(val) {
+// Live feedback on page 3: as soon as both axes are set, show where the record
+// lands in the matrix. Mis-set values are obvious immediately rather than at export.
+function updatePriorityPreview() {
+  const box = document.getElementById('priority-preview');
+  if (!box) return;
+  const p = priorityOf(formRecordSnapshot());
+  if (!p) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.style.background = p.color;
+  box.style.color = (p.band === 'Medium') ? '#1a2332' : '#fff';
+  document.getElementById('priority-preview-text').textContent = p.band;
+  document.getElementById('priority-preview-sub').textContent =
+    DAMAGE_STATES[p.ds-1].short + ' damage  x  ' + CONSEQUENCE_LEVELS[p.consequence-1].label + ' consequence';
+}
+
+function switchScale(v) {
   document.querySelectorAll('.scale-section').forEach(s => s.classList.remove('active'));
-  const sec = document.getElementById('scale-' + val);
+  const sec = document.getElementById('scale-' + v);
   if (sec) sec.classList.add('active');
+  updatePriorityPreview();
+  updateOperationalStatus();
 }
 
 function switchAssetFields(type) {
@@ -1766,6 +2057,10 @@ function updateSubmitSummary() {
   if (asset) parts.push(`🏗 ${asset}`);
   const scale = document.getElementById('f-scale-select').value;
   if (scale !== 'none') parts.push(`⚠️ Scale: ${scale.toUpperCase()}`);
+  const pr = priorityOf(formRecordSnapshot());
+  if (pr) parts.push(`🎯 Priority: <strong>${pr.band}</strong>`);
+  if (val('f-consequence')) parts.push(`🏘 Consequence: ${val('f-consequence')}`);
+  if (val('f-followup') === 'Yes') parts.push(`🔁 Follow-up required`);
   parts.push(`📷 ${currentPhotos.length} photo(s) captured`);
   if (currentLaterPhotos.length) parts.push(`🗂 ${currentLaterPhotos.length} later batch(es) noted`);
   document.getElementById('submit-summary').innerHTML = parts.join('<br>') || 'No data yet';
@@ -1891,6 +2186,16 @@ function getLaterPhotosFromDOM() {
 async function submitRecord() {
   if (!pendingLat) { showToast('No location set'); return; }
 
+  // When editing, carry forward any fields whose inputs no longer exist
+  // (the retired HAZUS and Custom scales) so old records are not hollowed out.
+  let prevRecord = {};
+  if (editingId) {
+    try {
+      const existing = await dbGetAll();
+      prevRecord = existing.find(function(x) { return x.id === editingId; }) || {};
+    } catch(e) { prevRecord = {}; }
+  }
+
   const record = {
     id: editingId || 'rec_' + Date.now(),
     timestamp: new Date().toISOString(),
@@ -1935,31 +2240,34 @@ async function submitRecord() {
     // Other
     otherDesc: document.getElementById('f-other-desc').value,
     assetRef: document.getElementById('f-asset-ref').value,
-    damageScale: document.getElementById('f-scale-select').value,
+    damageScale: effectiveDamageScale(),   // a retired scale is preserved, not overwritten
     // EMS-98
     emsGrade: document.getElementById('f-ems-grade').value,
     emsStructural: document.getElementById('f-ems-structural').value,
     emsNonStructural: document.getElementById('f-ems-nonstructural').value,
-    habitability: document.getElementById('f-habitability').value,
+    // Serviceability input retired - operational status is derived from DS instead.
+    // Legacy values stay on the record rather than being destroyed.
+    habitability: editingId ? (prevRecord.habitability || '') : '',
     // HAZUS
-    hazusState: document.getElementById('f-hazus-state').value,
-    hazusLossRatio: document.getElementById('f-hazus-loss').value,
-    hazusFunctionality: document.getElementById('f-hazus-func').value,
-    hazusOccupancy: document.getElementById('f-hazus-occupancy').value,
+    // HAZUS/Custom inputs are retired; existing records keep their stored values
+    hazusState: editingId ? (prevRecord.hazusState || '') : '',
+    hazusLossRatio: editingId ? (prevRecord.hazusLossRatio || '') : '',
+    hazusFunctionality: editingId ? (prevRecord.hazusFunctionality || '') : '',
+    hazusOccupancy: editingId ? (prevRecord.hazusOccupancy || '') : '',
     // Custom
-    customCondition: document.getElementById('f-custom-cond').value,
-    customAction: document.getElementById('f-custom-action').value,
-    customScore: document.getElementById('f-custom-score').value,
-    customLabel1: document.getElementById('f-custom-label1').value,
-    customValue1: document.getElementById('f-custom-val1').value,
-    customLabel2: document.getElementById('f-custom-label2').value,
-    customValue2: document.getElementById('f-custom-val2').value,
-    // Casualties
-    fatalities: document.getElementById('f-fatalities').value,
-    injured: document.getElementById('f-injured').value,
+    customCondition: editingId ? (prevRecord.customCondition || '') : '',
+    customAction: editingId ? (prevRecord.customAction || '') : '',
+    customScore: editingId ? (prevRecord.customScore || '') : '',
+    customLabel1: editingId ? (prevRecord.customLabel1 || '') : '',
+    customValue1: editingId ? (prevRecord.customValue1 || '') : '',
+    customLabel2: editingId ? (prevRecord.customLabel2 || '') : '',
+    customValue2: editingId ? (prevRecord.customValue2 || '') : '',
     // Notes
     notes: document.getElementById('f-notes').value,
-    urgency: document.getElementById('f-urgency').value,
+    consequence: val('f-consequence'),
+    // Urgency input retired - response priority supersedes it. Stored values on
+    // older records are kept so their data is not hollowed out.
+    urgency: editingId ? (prevRecord.urgency || '') : '',
     followUp: document.getElementById('f-followup').value,
     // Photos
     photos: currentPhotos,
@@ -1984,7 +2292,7 @@ async function submitRecord() {
     }
   }
   renderRecords();
-  if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+  if (map && userMarker) { map.removeLayer(userMarker); userMarker = null; }
   pendingLat = null; pendingLng = null; pendingOSM = null;
   editingId = null;   // BUGFIX: release edit binding so next record is new
 }
@@ -2047,28 +2355,35 @@ async function editRecord(id) {
   // Other
   document.getElementById('f-other-desc').value = r.otherDesc || '';
   document.getElementById('f-asset-ref').value = r.assetRef || '';
-  document.getElementById('f-scale-select').value = r.damageScale || 'none';
-  switchScale(r.damageScale || 'none');
+  editingRecord = r;
+  if (r.damageScale && !scaleSelectHas(r.damageScale)) {
+    // Retired scale: show it truthfully in the select as a disabled option rather
+    // than leaving the field displaying a scale this record does not use.
+    editingRetiredScale = r.damageScale;
+    const sel = document.getElementById('f-scale-select');
+    if (sel) {
+      const opt = document.createElement('option');
+      opt.value = r.damageScale;
+      opt.textContent = r.damageScale.toUpperCase() + ' (retired — kept as recorded)';
+      opt.disabled = true;
+      opt.className = 'retired-scale-option';
+      sel.appendChild(opt);
+      sel.value = r.damageScale;
+    }
+    switchScale('none');   // no input section exists for a retired scale
+    showToast('This record uses the retired ' + r.damageScale.toUpperCase() + ' scale; its grade is kept as-is');
+  } else {
+    editingRetiredScale = null;
+    document.getElementById('f-scale-select').value = r.damageScale || 'none';
+    switchScale(r.damageScale || 'none');
+  }
   // EMS
   document.getElementById('f-ems-structural').value = r.emsStructural || '';
   document.getElementById('f-ems-nonstructural').value = r.emsNonStructural || '';
   // HAZUS
-  document.getElementById('f-hazus-loss').value = r.hazusLossRatio || 0;
-  document.getElementById('hazus-loss-val').textContent = (r.hazusLossRatio || 0) + '%';
-  document.getElementById('f-hazus-func').value = r.hazusFunctionality || 100;
-  document.getElementById('hazus-func-val').textContent = (r.hazusFunctionality || 100) + '%';
-  document.getElementById('f-hazus-occupancy').value = r.hazusOccupancy || '';
+  // HAZUS fields are retired - values stay on the record and still export
   // Custom
-  document.getElementById('f-custom-score').value = r.customScore || 5;
-  document.getElementById('custom-score-val').textContent = r.customScore || 5;
-  document.getElementById('f-custom-action').value = r.customAction || '';
-  document.getElementById('f-custom-label1').value = r.customLabel1 || '';
-  document.getElementById('f-custom-val1').value = r.customValue1 || '';
-  document.getElementById('f-custom-label2').value = r.customLabel2 || '';
-  document.getElementById('f-custom-val2').value = r.customValue2 || '';
-  // Casualties
-  document.getElementById('f-fatalities').value = r.fatalities || '';
-  document.getElementById('f-injured').value = r.injured || '';
+  // Custom fields are retired - values stay on the record and still export
   // Notes
   document.getElementById('f-notes').value = r.notes || '';
   // Photos
@@ -2087,22 +2402,19 @@ async function editRecord(id) {
     });
   }
   restoreChip('ems98-chips','f-ems-grade', r.emsGrade || '');
-  restoreChip('hazus-chips','f-hazus-state', r.hazusState || '');
-  restoreChip('custom-chips','f-custom-cond', r.customCondition || '');
-  restoreChip('habit-chips','f-habitability', r.habitability || '');
-  restoreChip('urgency-chips','f-urgency', r.urgency || '');
+  restoreChip('consequence-chips','f-consequence', r.consequence || '');
   restoreChip('followup-chips','f-followup', r.followUp || '');
 
   document.getElementById('panel-title').textContent = 'Edit Record';
   goToPage(0);
   openPanel();
-  map.closePopup();
+  if (map) map.closePopup();
 }
 
 async function deleteRecord(id) {
   if (!confirm('Delete this record permanently?')) return;
   await dbDelete(id);
-  if (recordMarkers[id]) { map.removeLayer(recordMarkers[id]); delete recordMarkers[id]; }
+  if (map && recordMarkers[id]) { map.removeLayer(recordMarkers[id]); delete recordMarkers[id]; }
   const all = await dbGetAll();
   updateCounts(all);
   renderRecords();
@@ -2112,7 +2424,7 @@ async function deleteRecord(id) {
 async function clearAllRecords() {
   if (!confirm('Delete ALL records from this device? This cannot be undone.\n\nExport first!')) return;
   await dbClear();
-  Object.values(recordMarkers).forEach(m => map.removeLayer(m));
+  if (map) Object.values(recordMarkers).forEach(m => map.removeLayer(m));
   recordMarkers = {};
   updateCounts([]);
   renderRecords();
@@ -2142,7 +2454,7 @@ async function renderRecords() {
     // Build damage detail string
     let damageDetail = '';
     if (r.damageScale === 'ems98') {
-      const parts = [r.emsGrade, r.emsStructural, r.habitability].filter(Boolean);
+      const parts = [r.emsGrade, r.emsStructural, (operationalStatusOf(r)||{}).short].filter(Boolean);
       damageDetail = parts.join(' · ');
     } else if (r.damageScale === 'hazus') {
       const parts = [r.hazusState, r.hazusLossRatio ? 'Loss: '+r.hazusLossRatio+'%' : '', r.hazusOccupancy].filter(Boolean);
@@ -2203,11 +2515,6 @@ async function renderRecords() {
       r.assetRef
     ].filter(Boolean).join(' · ');
 
-    // Casualties
-    const casualties = (r.fatalities || r.injured) ?
-      `<div style="background:#fdecea;border-radius:6px;padding:6px 10px;font-size:12px;color:#c0392b;margin-top:6px;font-weight:600;">
-        ⚠️ Fatalities: ${r.fatalities||0} · Injured: ${r.injured||0}
-      </div>` : '';
 
     const card = document.createElement('div');
     card.className = 'record-card';
@@ -2227,11 +2534,13 @@ async function renderRecords() {
         </div>
         ${assetDetails ? `<div style="color:var(--text-muted);">🏗 ${assetDetails}</div>` : ''}
         ${damageDetail ? `<div style="color:var(--text-muted);">⚠️ ${damageDetail}</div>` : ''}
-        ${r.urgency ? `<div>🚨 Urgency: <strong>${r.urgency}</strong>${r.followUp==='Yes'?' · Follow-up required':''}</div>` : ''}
+        ${r.consequence ? `<div>🏘 Consequence: <strong>${r.consequence}</strong></div>` : ''}
+        ${r.followUp === 'Yes' ? `<div>🔁 <strong>Follow-up required</strong></div>` : ''}
+        ${r.urgency ? `<div style="color:var(--text-muted);">🚨 Urgency: ${r.urgency} <span style="font-size:10px;">(retired field)</span></div>` : ''}
         ${r.notes ? `<div style="background:var(--bg);border-radius:6px;padding:6px 10px;margin-top:4px;font-size:12px;color:var(--text-muted);">📝 ${r.notes}</div>` : ''}
       </div>
 
-      ${casualties}
+      ${miniMatrixHTML(r)}
       ${photosHtml}
       ${laterHtml}
 
@@ -2248,7 +2557,8 @@ async function renderRecords() {
 
 function flyToRecord(lat, lng) {
   switchTab('map', document.querySelector('.nav-btn'));
-  map.flyTo([lat, lng], 17);
+  if (map) map.flyTo([lat, lng], 17);
+  else showToast('Map unavailable - check your connection');
 }
 
 // ══════════════════════════════════════════════
@@ -2280,7 +2590,8 @@ async function exportXLSX() {
     'EMS Grade': r.emsGrade,
     'EMS Structural': r.emsStructural,
     'EMS Non-Structural': r.emsNonStructural,
-    'Habitability': r.habitability,
+    'Operational Status': (operationalStatusOf(r) || {}).full || '',
+    'Serviceability': serviceabilityLabel(r),
     'HAZUS State': r.hazusState,
     'HAZUS Loss Ratio (%)': r.hazusLossRatio,
     'HAZUS Functionality (%)': r.hazusFunctionality,
@@ -2290,8 +2601,11 @@ async function exportXLSX() {
     'Custom Score': r.customScore,
     'Custom Field 1': r.customLabel1 ? `${r.customLabel1}: ${r.customValue1}` : '',
     'Custom Field 2': r.customLabel2 ? `${r.customLabel2}: ${r.customValue2}` : '',
-    'Fatalities': r.fatalities,
-    'Injured': r.injured,
+    'Consequence': r.consequence,
+    'DS Index': dsIndexOf(r) || '',
+    'Consequence Index': consequenceIndexOf(r) || '',
+    'Priority Score': (priorityOf(r) || {}).score || '',
+    'Priority Band': (priorityOf(r) || {}).band || '',
     'Urgency': r.urgency,
     'Follow-up': r.followUp,
     'Notes': r.notes,
@@ -2324,9 +2638,15 @@ function buildGeoJSONFeatures(records, includePhotos) {
       bridgeLength: r.bridgeLength, bridgeMaterial: r.bridgeMaterial,
       // Damage
       damageScale: r.damageScale, emsGrade: r.emsGrade, emsStructural: r.emsStructural,
-      habitability: r.habitability, hazusState: r.hazusState, hazusLossRatio: r.hazusLossRatio,
+      operational_status: (operationalStatusOf(r) || {}).full || '',
+      serviceability: serviceabilityLabel(r), hazusState: r.hazusState, hazusLossRatio: r.hazusLossRatio,
       customCondition: r.customCondition, customAction: r.customAction, customScore: r.customScore,
-      fatalities: r.fatalities, injured: r.injured,
+      // Consequence and the derived priority - the same fields the GIS package carries
+      consequence: r.consequence || '',
+      ds_index: dsIndexOf(r) || null,
+      consequence_index: consequenceIndexOf(r) || null,
+      priority_score: (priorityOf(r) || {}).score || null,
+      priority_band: (priorityOf(r) || {}).band || '',
       urgency: r.urgency, followUp: r.followUp, notes: r.notes, assetRef: r.assetRef,
       photoCount: r.photos?.length || 0,
       laterBatches: r.laterPhotos?.map(p => `${p.camera} [${p.fileRange}]`).join(' | ') || '',
@@ -2395,7 +2715,7 @@ async function loadFullSession(input, replace) {
         count++;
       }
       // Reload map markers
-      Object.values(recordMarkers).forEach(m => map.removeLayer(m));
+      if (map) Object.values(recordMarkers).forEach(m => map.removeLayer(m));
       recordMarkers = {};
       await loadRecordsOnMap();
       // Update session info
@@ -2435,12 +2755,18 @@ async function exportCSV() {
   const keys = ['id','timestamp','inspectorName','inspectorId','organization','mission',
     'lat','lng','address','osmId','osmType','osmName','assetType','buildingUse','floors',
     'construction','yearBuilt','assetRef','damageScale','emsGrade','emsStructural',
-    'emsNonStructural','habitability','hazusState','hazusLossRatio','hazusFunctionality',
+    'emsNonStructural','hazusState','hazusLossRatio','hazusFunctionality',
     'hazusOccupancy','customCondition','customAction','customScore',
-    'fatalities','injured','urgency','followUp','notes'];
-  const csv = [keys.join(','), ...records.map(r =>
-    keys.map(k => JSON.stringify(r[k] ?? '')).join(',')
-  )].join('\n');
+    'consequence','urgency','followUp','notes'];
+  // derived values are computed, not stored, so they are appended explicitly
+  const derived = ['operational_status','serviceability','ds_index','consequence_index','priority_score','priority_band'];
+  const csv = [keys.concat(derived).join(','), ...records.map(r => {
+    const p = priorityOf(r) || {};
+    return keys.map(k => JSON.stringify(r[k] ?? ''))
+      .concat([ JSON.stringify((operationalStatusOf(r) || {}).full || ''), JSON.stringify(serviceabilityLabel(r)),
+                JSON.stringify(dsIndexOf(r) || ''), JSON.stringify(consequenceIndexOf(r) || ''),
+                JSON.stringify(p.score || ''), JSON.stringify(p.band || '') ]).join(',');
+  })].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -2458,9 +2784,10 @@ function switchTab(name, btn) {
   document.getElementById('screen-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'records') renderRecords();
+  if (name === 'summary') renderSummary();
   if (name === 'export') updateExportStats();
   if (name === 'settings') refreshStorageInfo();
-  if (name === 'map') { setTimeout(() => map.invalidateSize(), 100); }
+  if (name === 'map') { setTimeout(() => { if (map) map.invalidateSize(); }, 100); }
 }
 
 async function updateExportStats() {
@@ -2498,6 +2825,8 @@ async function init() {
 
   try {
     initMap();
+    try { mapMode = localStorage.getItem('fs_map_mode') || 'damage'; } catch(e) { mapMode = 'damage'; }
+    setMapMode(mapMode);
   } catch(e) {
     console.error('map init failed', e);
     showToast('Map failed to load - check your connection');
@@ -2831,12 +3160,12 @@ async function saveAllPhotos() {
 }
 
 function flyAndClose(recordId) {
-  map.closePopup();
+  if (map) map.closePopup();
   switchTab('records', document.querySelectorAll('.nav-btn')[1]);
   setTimeout(function() {
     const cards = document.querySelectorAll('.record-card');
     cards.forEach(function(c) {
-      if (c.innerHTML.indexOf(recordId) !== -1) c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (c.innerHTML.indexOf(recordId) !== -1) safeScrollIntoView(c, 'center');
     });
   }, 400);
 }
@@ -2879,7 +3208,11 @@ function qgisMapTip(maxPhotos) {
     '<tr><td><b>Inspector</b></td><td>[% "inspector" %]</td></tr>' +
     '<tr><td><b>Date</b></td><td>[% "timestamp" %]</td></tr>' +
     '<tr><td><b>Damage</b></td><td>[% "damage_grade" %] ([% "damage_scale" %])</td></tr>' +
-    '<tr><td><b>Urgency</b></td><td>[% "urgency" %]</td></tr>' +
+    '<tr><td><b>Operational status</b></td><td>[% "operational_status" %]</td></tr>' +
+    '<tr><td><b>Serviceability</b></td><td>[% "serviceability" %]</td></tr>' +
+    '<tr><td><b>Consequence</b></td><td>[% "consequence" %]</td></tr>' +
+    '<tr><td><b>Priority</b></td><td>[% "priority_band" %]</td></tr>' +
+    '<tr><td><b>Follow-up</b></td><td>[% "follow_up" %]</td></tr>' +
     '<tr><td><b>Notes</b></td><td>[% "notes" %]</td></tr>' +
     '</table><div>' + imgs + '</div></div>';
 }
@@ -2911,18 +3244,22 @@ function qgisQml(maxPhotos) {
     '</qgis>\n';
 }
 
-function packageReadme(maxPhotos, nRecords, nPhotos) {
+function packageReadme(maxPhotos, nRecords, nPhotos, nSkipped) {
   const photoFields = maxPhotos === 1 ? 'photo1' : ('photo1 .. photo' + maxPhotos);
   return [
     'FieldSurvey - GIS package',
     '=========================',
     '',
     'Contents',
-    '  survey.geojson   ' + nRecords + ' records, standard GeoJSON (EPSG:4326 / WGS 84)',
-    '  photos/          ' + nPhotos + ' photo files (JPEG)',
-    '  survey.qml       optional QGIS layer style (attribute form + map tip)',
-    '  README.txt       this file',
+    '  survey.geojson         ' + nRecords + ' records, standard GeoJSON (EPSG:4326 / WGS 84)',
+    '  photos/                ' + nPhotos + ' photo files (JPEG)',
+    '  style_damage.qml       QGIS style: coloured by damage state (circles)',
+    '  style_consequence.qml  QGIS style: coloured by consequence (squares)',
+    '  style_priority.qml     QGIS style: coloured by response priority (diamonds)',
+    '  README.txt             this file',
     '',
+    (nSkipped ? '  NOTE: ' + nSkipped + ' record(s) were left out because they have no coordinates.\n' +
+                '        They are still present in the XLSX and CSV exports.\n' : ''),
     'The data is plain GeoJSON and opens in QGIS, ArcGIS Pro, and any GIS or',
     'library that reads GeoJSON. Photos are ordinary JPEG files in photos/, and',
     'each record stores their RELATIVE paths in the fields ' + photoFields + '.',
@@ -2933,26 +3270,42 @@ function packageReadme(maxPhotos, nRecords, nPhotos) {
     '  relative, so a project saved elsewhere will load the attributes but not',
     '  the images.',
     '',
-    'QGIS (style file included)',
-    '  1. Save the project into the unzipped folder.',
-    '  2. Drag survey.geojson into QGIS.',
-    '  3. Layer Properties > Symbology > Style (bottom) > Load Style >',
-    '     choose survey.qml. This loads the attribute form and the map tip.',
-    '  4. Click a point with the Identify tool to see all attributes and photos.',
-    '     For hover previews, enable View > Show Map Tips.',
+    'Three thematic layers from one file',
+    '  There is a single data file on purpose - duplicating the geometry into',
+    '  three files would let the copies drift apart. To get three layers, add',
+    '  survey.geojson three times and style each one differently:',
     '',
-    '  If photos do not appear in the form:',
-    '    Layer Properties > Attribute Form > select field photo1 >',
-    '    Widget Type = Attachment >',
-    '    Integrated Document Viewer = Image >',
-    '    Relative Paths = Relative to Project Path.',
-    '    Repeat for the remaining photo fields.',
+    '  1. Save the QGIS project into the unzipped folder.',
+    '  2. Drag survey.geojson in three times (three entries appear in Layers).',
+    '  3. For each one: Layer Properties > Symbology > Style (bottom) >',
+    '     Load Style > pick style_damage.qml / style_consequence.qml /',
+    '     style_priority.qml.',
+    '  4. Rename the layers in the panel to Damage / Consequence / Priority.',
+    '  5. Each style also carries the attribute form and the map tip, so photos',
+    '     show whichever layer you click.',
+    '',
+    '  The styles use different marker shapes (circle / square / diamond) so the',
+    '  layers stay distinguishable when more than one is switched on, and in',
+    '  greyscale print.',
+    '',
+    'Priority',
+    '  priority_score and priority_band come from a 5x5 matrix of damage state',
+    '  against consequence for the community. Records missing either value have',
+    '  no priority and appear as "Not assessed".',
+    '',
+    'If photos do not appear in the form',
+    '  Layer Properties > Attribute Form > select field photo1 >',
+    '  Widget Type = Attachment >',
+    '  Integrated Document Viewer = Image >',
+    '  Relative Paths = Relative to Project Path.',
+    '  Repeat for the remaining photo fields.',
     '',
     'ArcGIS Pro',
     '  Add survey.geojson directly, or convert it with the JSON To Features tool.',
-    '  The ' + photoFields + ' fields hold relative paths to the images; configure',
-    '  them as hyperlinks in the pop-up, or use the Add Attachments tool with',
-    '  those paths as the match source.',
+    '  Symbolise on ds_index, consequence_index or priority_band to reproduce the',
+    '  three thematic views. The ' + photoFields + ' fields hold relative paths to',
+    '  the images; configure them as hyperlinks in the pop-up, or use the Add',
+    '  Attachments tool with those paths as the match source.',
     '',
     'Other tools',
     '  Python (geopandas), R (sf), Leaflet, Mapbox and most web mapping libraries',
@@ -2961,9 +3314,11 @@ function packageReadme(maxPhotos, nRecords, nPhotos) {
     'Fields',
     '  record_id, timestamp, inspector, inspector_id, organization, mission,',
     '  asset_type, address, osm_id, osm_name, damage_scale, damage_grade,',
-    '  structural, habitability, loss_ratio, urgency, follow_up, fatalities,',
-    '  injured, notes, asset_ref, asset_detail, photo_count, ' + photoFields + ',',
-    '  later_batches',
+    '  structural, operational_status, serviceability, loss_ratio, consequence,',
+    '  ds_index,',
+    '  consequence_index, priority_score, priority_band, urgency, follow_up,',
+    '  notes, asset_ref, asset_detail, photo_count,',
+    '  ' + photoFields + ', later_batches',
     '',
     'How to cite',
     '  ' + CITATION_TEXT,
@@ -3023,12 +3378,12 @@ async function exportGISPackage() {
   const zip = new JSZip();
   const photosDir = zip.folder('photos');
 
-  let maxPhotos = 1, totalPhotos = 0;
+  let maxPhotos = 1, totalPhotos = 0, skipped = 0;
   records.forEach(function(r) { maxPhotos = Math.max(maxPhotos, (r.photos || []).length); });
 
   const features = [];
   for (const r of records) {
-    if (!r.lat || !r.lng) continue;
+    if (!r.lat || !r.lng) { skipped++; continue; }
     const base = safeName(r.id) + '_' + safeName((r.address || '').slice(0, 30));
     const props = {
       record_id: r.id,
@@ -3044,12 +3399,16 @@ async function exportGISPackage() {
       damage_scale: r.damageScale || '',
       damage_grade: damageGradeOf(r),
       structural: r.emsStructural || '',
-      habitability: r.habitability || '',
+      operational_status: (operationalStatusOf(r) || {}).full || '',
+      serviceability: serviceabilityLabel(r),
       loss_ratio: r.hazusLossRatio || '',
+      consequence: r.consequence || '',
+      ds_index: dsIndexOf(r) || null,
+      consequence_index: consequenceIndexOf(r) || null,
+      priority_score: (priorityOf(r) || {}).score || null,
+      priority_band: (priorityOf(r) || {}).band || '',
       urgency: r.urgency || '',
       follow_up: r.followUp || '',
-      fatalities: r.fatalities || '',
-      injured: r.injured || '',
       notes: r.notes || '',
       asset_ref: r.assetRef || '',
       asset_detail: assetDetailOf(r),
@@ -3077,8 +3436,10 @@ async function exportGISPackage() {
     crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:OGC:1.3:CRS84' } },
     features: features
   }, null, 2));
-  zip.file('survey.qml', qgisQml(maxPhotos));
-  zip.file('README.txt', packageReadme(maxPhotos, features.length, totalPhotos));
+  zip.file('style_damage.qml', damageStyleQml(maxPhotos));
+  zip.file('style_consequence.qml', consequenceStyleQml(maxPhotos));
+  zip.file('style_priority.qml', priorityStyleQml(maxPhotos));
+  zip.file('README.txt', packageReadme(maxPhotos, features.length, totalPhotos, skipped));
 
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const url = URL.createObjectURL(blob);
@@ -3087,7 +3448,9 @@ async function exportGISPackage() {
   a.download = 'FieldSurvey_GIS_' + safeName(session.mission) + '_' + session.date + '.zip';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(url); }, 3000);
-  showToast('GIS package: ' + features.length + ' records, ' + totalPhotos + ' photos (' + (blob.size / 1048576).toFixed(1) + ' MB)');
+  showToast('GIS package: ' + features.length + ' records, ' + totalPhotos + ' photos' +
+    (skipped ? ' - ' + skipped + ' skipped, no coordinates' : '') +
+    ' (' + (blob.size / 1048576).toFixed(1) + ' MB)');
 }
 
 
@@ -3217,7 +3580,7 @@ const CITATION_TEXT = 'Yurdakul, Ö. (2026). FieldSurvey: A web application for 
   + 'Faculty of Transport Engineering, University of Pardubice. '
   + 'https://github.com/ozguryurdakul/reconnaissance';
 
-const APP_VERSION = 'v1.12';
+const APP_VERSION = 'v2.0';
 
 function copyCitation() {
   const done = function() { showToast('Citation copied'); };
@@ -3244,6 +3607,343 @@ function legacyCopy(text) {
     document.body.removeChild(ta);
     return ok;
   } catch(e) { return false; }
+}
+
+
+// ══════════════════════════════════════════════
+// SUMMARY: priority matrix + distribution charts
+// ══════════════════════════════════════════════
+let summaryRecords = [];
+
+async function renderSummary() {
+  if (!DB) return;
+  summaryRecords = await dbGetAll();
+  const scored = summaryRecords.filter(function(r) { return priorityOf(r); });
+  const unassessed = summaryRecords.length - scored.length;
+
+  document.getElementById('sm-total').textContent = summaryRecords.length;
+  document.getElementById('sm-scored').textContent = scored.length;
+  document.getElementById('sm-unassessed').textContent = unassessed;
+
+  renderMatrix(summaryRecords);
+  document.getElementById('sm-chart-ds').innerHTML =
+    barChartSVG(DAMAGE_STATES.map(function(d) {
+      return { label: d.label, color: d.color,
+               value: summaryRecords.filter(function(r) { return dsIndexOf(r) === d.index; }).length };
+    }), summaryRecords.filter(function(r) { return !dsIndexOf(r); }).length);
+  document.getElementById('sm-chart-cons').innerHTML =
+    barChartSVG(CONSEQUENCE_LEVELS.map(function(x) {
+      return { label: x.label, color: x.color,
+               value: summaryRecords.filter(function(r) { return consequenceIndexOf(r) === x.index; }).length };
+    }), summaryRecords.filter(function(r) { return !consequenceIndexOf(r); }).length);
+
+  // Response priority, by band
+  document.getElementById('sm-chart-priority').innerHTML =
+    barChartSVG(PRIORITY_BANDS.map(function(b) {
+      return { label: b.label, color: b.color,
+               value: summaryRecords.filter(function(r) {
+                 const p = priorityOf(r); return p && p.band === b.label; }).length };
+    }), unassessed);
+
+  renderServiceSplit();
+
+  const note = document.getElementById('sm-matrix-note');
+  note.innerHTML = unassessed > 0
+    ? '<strong>' + unassessed + ' record' + (unassessed === 1 ? '' : 's') +
+      ' not placed</strong> — damage state or consequence is missing.'
+    : '';
+  closeCellList();
+}
+
+// 5x5 grid. CSS grid rather than SVG: the cells carry text and need to be
+// comfortable tap targets, and it reflows on a narrow screen.
+function renderMatrix(records) {
+  const counts = {};
+  records.forEach(function(r) {
+    const p = priorityOf(r);
+    if (p) { const k = p.consequence + '-' + p.ds; counts[k] = (counts[k] || 0) + 1; }
+  });
+
+  let h = '<div style="display:grid;grid-template-columns:auto repeat(5,1fr);gap:2px;align-items:stretch;">';
+  // rows run Extreme (5) down to Minor (1), matching the source matrix
+  for (let q = 5; q >= 1; q--) {
+    h += '<div style="display:flex;align-items:center;justify-content:flex-end;padding-right:6px;' +
+         'font-size:10px;font-weight:600;color:var(--text-muted);text-align:right;line-height:1.2;">' +
+         CONSEQUENCE_LEVELS[q-1].label + '</div>';
+    for (let d = 1; d <= 5; d++) {
+      const score = PRIORITY_MATRIX[q][d];
+      const band = PRIORITY_BANDS.find(function(b) { return score <= b.max; });
+      const n = counts[q + '-' + d] || 0;
+      const ink = (band.label === 'Medium') ? '#1a2332' : '#fff';
+      h += '<div class="sm-cell" onclick="showCellRecords(' + q + ',' + d + ')"' +
+           ' title="' + CONSEQUENCE_LEVELS[q-1].label + ' consequence, ' + DAMAGE_STATES[d-1].label +
+           ' — priority ' + band.label + ' (score ' + score + '), ' + n + ' record' + (n===1?'':'s') + '"' +
+           ' style="background:' + band.color + ';opacity:' + (n ? 1 : 0.28) + ';border-radius:3px;' +
+           'min-height:42px;display:flex;align-items:center;justify-content:center;color:' + ink + ';">' +
+           (n ? '<div style="font-size:16px;font-weight:800;line-height:1;">' + n + '</div>' : '') +
+           '</div>';
+    }
+  }
+  // x axis
+  h += '<div></div>';
+  for (let d = 1; d <= 5; d++) {
+    h += '<div style="font-size:10px;font-weight:600;color:var(--text-muted);text-align:center;padding-top:4px;">' +
+         DAMAGE_STATES[d-1].short + '</div>';
+  }
+  h += '</div>';
+  // Short axis labels: the full wording wraps to two lines at phone width
+  // key for the band colours - previously the matrix showed four colours with no legend
+  h += '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px;">' +
+       '<span style="font-size:11px;font-weight:700;color:var(--text);">Priority:</span>' +
+       PRIORITY_BANDS.map(function(b) {
+         return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);">' +
+                '<span style="width:11px;height:11px;border-radius:2px;background:' + b.color +
+                ';border:1px solid rgba(0,0,0,0.12);"></span>' + b.label + '</div>';
+       }).join('') + '</div>';
+  h += '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;' +
+       'text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);font-weight:700;">' +
+       '<span>&#8593; Consequence</span><span>Damage &#8594;</span></div>' +
+       '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' +
+       'Consequence for the community (vertical) against damage to the asset (horizontal).</div>';
+  document.getElementById('sm-matrix').innerHTML = h;
+}
+
+// Horizontal bars: long category labels read far better on the left than rotated
+// under a vertical axis, and the baseline stays at x=0.
+function barChartSVG(items, notAssessed) {
+  const rowH = 26, gap = 6, labelW = 104, valueW = 34;
+  const W = 320, plotW = W - labelW - valueW;
+  const rows = items.concat(notAssessed > 0
+    ? [{ label: 'Not assessed', color: UNASSESSED_COLOR, value: notAssessed }] : []);
+  const max = Math.max(1, ...rows.map(function(r) { return r.value; }));
+  const H = rows.length * (rowH + gap);
+  const total = rows.reduce(function(s, r) { return s + r.value; }, 0);
+
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H +
+          '" role="img" style="display:block;overflow:visible">';
+  rows.forEach(function(r, i) {
+    const y = i * (rowH + gap);
+    const bw = max ? (r.value / max) * plotW : 0;
+    const pct = total ? Math.round(r.value / total * 100) : 0;
+    s += '<title></title>';
+    s += '<text x="' + (labelW - 8) + '" y="' + (y + rowH/2 + 4) +
+         '" text-anchor="end" class="sm-axis" style="font-size:11px">' + r.label + '</text>';
+    // track
+    s += '<rect x="' + labelW + '" y="' + (y + 5) + '" width="' + plotW + '" height="' + (rowH - 10) +
+         '" rx="3" fill="#eef2f6"/>';
+    if (r.value > 0) {
+      s += '<g><title>' + r.label + ': ' + r.value + ' record' + (r.value===1?'':'s') + ' (' + pct + '%)</title>' +
+           '<rect x="' + labelW + '" y="' + (y + 5) + '" width="' + Math.max(4, bw) + '" height="' + (rowH - 10) +
+           '" rx="3" fill="' + r.color + '"/></g>';
+    }
+    s += '<text x="' + (labelW + plotW + 6) + '" y="' + (y + rowH/2 + 4) +
+         '" class="sm-axis" style="font-size:11px;font-weight:700">' + r.value + '</text>';
+  });
+  s += '</svg>';
+  return s;
+}
+
+function showCellRecords(q, d) {
+  const matches = summaryRecords.filter(function(r) {
+    const p = priorityOf(r);
+    return p && p.consequence === q && p.ds === d;
+  });
+  const box = document.getElementById('sm-cell-list');
+  const score = PRIORITY_MATRIX[q][d];
+  const band = PRIORITY_BANDS.find(function(b) { return score <= b.max; });
+  document.getElementById('sm-cell-title').innerHTML =
+    CONSEQUENCE_LEVELS[q-1].label + ' &times; ' + DAMAGE_STATES[d-1].short +
+    ' <span style="background:' + band.color + ';color:' + (band.label==='Medium'?'#1a2332':'#fff') +
+    ';border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;">' + band.label + '</span>';
+  const list = document.getElementById('sm-cell-records');
+  if (!matches.length) {
+    list.innerHTML = '<div style="font-size:13px;color:var(--text-muted);">No records in this cell.</div>';
+  } else {
+    list.innerHTML = matches.map(function(r) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13px;font-weight:700;">' + (r.assetType || 'Record') + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+            (r.address || (r.lat ? r.lat.toFixed(4) + ', ' + r.lng.toFixed(4) : 'No location')) + '</div>' +
+        '</div>' +
+        (r.lat ? '<button class="btn btn-secondary btn-sm" onclick="flyToRecord(' + r.lat + ',' + r.lng + ')">Map</button>' : '') +
+        '<button class="btn btn-secondary btn-sm" onclick="editRecord(\'' + r.id + '\')">Open</button>' +
+      '</div>';
+    }).join('');
+  }
+  box.style.display = 'block';
+  safeScrollIntoView(box, 'nearest');
+}
+
+// Scrolling is a nicety: never let it take down the handler that called it.
+function safeScrollIntoView(el, block) {
+  try { if (el && typeof el.scrollIntoView === 'function')
+    el.scrollIntoView({ behavior: 'smooth', block: block || 'nearest' }); } catch(e) {}
+}
+
+function closeCellList() {
+  const box = document.getElementById('sm-cell-list');
+  if (box) box.style.display = 'none';
+}
+
+
+// Postage-stamp 5x5 for a record card: the grid as context, this record's cell lit.
+function miniMatrixHTML(r) {
+  const p = priorityOf(r);
+  if (!p) return '';
+  let cells = '';
+  for (let q = 5; q >= 1; q--) {
+    for (let d = 1; d <= 5; d++) {
+      const score = PRIORITY_MATRIX[q][d];
+      const band = PRIORITY_BANDS.find(function(b) { return score <= b.max; });
+      const here = (q === p.consequence && d === p.ds);
+      cells += '<div style="width:9px;height:9px;border-radius:1px;background:' + band.color +
+               ';opacity:' + (here ? 1 : 0.25) +
+               (here ? ';outline:1.5px solid var(--text);outline-offset:1px' : '') + ';"></div>';
+    }
+  }
+  return '<div style="display:flex;align-items:center;gap:10px;margin-top:10px;' +
+      'background:var(--bg);border-radius:8px;padding:8px 10px;">' +
+      '<div style="display:grid;grid-template-columns:repeat(5,9px);gap:2px;flex-shrink:0;">' + cells + '</div>' +
+      '<div style="min-width:0;">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--text);">Priority: ' +
+          '<span style="background:' + p.color + ';color:' + (p.band==='Medium'?'#1a2332':'#fff') +
+          ';border-radius:4px;padding:1px 7px;">' + p.band + '</span>' +
+          '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' +
+          DAMAGE_STATES[p.ds-1].short + ' damage &middot; ' + CONSEQUENCE_LEVELS[p.consequence-1].label + ' consequence</div>' +
+      '</div></div>';
+}
+
+
+// ── QGIS categorised style files ────────────────
+// One data file, three styles: the layer is added three times and styled
+// differently each time, which is how a GIS does thematic layers without
+// duplicating geometry.
+function hexToQgisRgba(hex) {
+  const h = hex.replace('#', '');
+  return parseInt(h.slice(0,2),16) + ',' + parseInt(h.slice(2,4),16) + ',' + parseInt(h.slice(4,6),16) + ',255';
+}
+
+function qgisMarkerSymbol(name, color, shape) {
+  return '' +
+  '      <symbol type="marker" name="' + name + '" alpha="1" clip_to_extent="1" force_rhr="0">\n' +
+  '        <layer class="SimpleMarker" enabled="1" locked="0" pass="0">\n' +
+  '          <Option type="Map">\n' +
+  '            <Option name="angle" type="QString" value="0"/>\n' +
+  '            <Option name="color" type="QString" value="' + hexToQgisRgba(color) + '"/>\n' +
+  '            <Option name="horizontal_anchor_point" type="QString" value="1"/>\n' +
+  '            <Option name="joinstyle" type="QString" value="bevel"/>\n' +
+  '            <Option name="name" type="QString" value="' + shape + '"/>\n' +
+  '            <Option name="offset" type="QString" value="0,0"/>\n' +
+  '            <Option name="offset_unit" type="QString" value="MM"/>\n' +
+  '            <Option name="outline_color" type="QString" value="255,255,255,255"/>\n' +
+  '            <Option name="outline_style" type="QString" value="solid"/>\n' +
+  '            <Option name="outline_width" type="QString" value="0.4"/>\n' +
+  '            <Option name="outline_width_unit" type="QString" value="MM"/>\n' +
+  '            <Option name="scale_method" type="QString" value="diameter"/>\n' +
+  '            <Option name="size" type="QString" value="3.6"/>\n' +
+  '            <Option name="size_unit" type="QString" value="MM"/>\n' +
+  '            <Option name="vertical_anchor_point" type="QString" value="1"/>\n' +
+  '          </Option>\n' +
+  '        </layer>\n' +
+  '      </symbol>\n';
+}
+
+function xmlEscape(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// cats: [{value, label, color}] - an empty value is the NULL / not-assessed class
+function qgisStyleQml(maxPhotos, attr, cats, shape) {
+  let categories = '', symbols = '';
+  cats.forEach(function(cat, i) {
+    categories += '      <category render="true" value="' + xmlEscape(cat.value) +
+                  '" symbol="' + i + '" label="' + xmlEscape(cat.label) + '"/>\n';
+    symbols += qgisMarkerSymbol(String(i), cat.color, shape);
+  });
+
+  let fields = '';
+  for (let i = 1; i <= maxPhotos; i++) {
+    fields +=
+      '    <field name="photo' + i + '">\n' +
+      '      <editWidget type="ExternalResource">\n' +
+      '        <config>\n' +
+      '          <Option type="Map">\n' +
+      '            <Option name="DocumentViewer" type="int" value="1"/>\n' +
+      '            <Option name="DocumentViewerHeight" type="int" value="0"/>\n' +
+      '            <Option name="DocumentViewerWidth" type="int" value="0"/>\n' +
+      '            <Option name="FileWidget" type="bool" value="true"/>\n' +
+      '            <Option name="FileWidgetButton" type="bool" value="true"/>\n' +
+      '            <Option name="RelativeStorage" type="int" value="1"/>\n' +
+      '            <Option name="StorageMode" type="int" value="0"/>\n' +
+      '          </Option>\n' +
+      '        </config>\n' +
+      '      </editWidget>\n' +
+      '    </field>\n';
+  }
+
+  return '<!DOCTYPE qgis PUBLIC \'http://mapserver.org/dtd/qgis.dtd\' \'SYSTEM\'>\n' +
+    '<qgis version="3.34" styleCategories="Symbology|MapTips|Forms">\n' +
+    '  <renderer-v2 type="categorizedSymbol" attr="' + attr + '" forceraster="0" symbollevels="0" enableorderby="0" referencescale="-1">\n' +
+    '    <categories>\n' + categories + '    </categories>\n' +
+    '    <symbols>\n' + symbols + '    </symbols>\n' +
+    '  </renderer-v2>\n' +
+    '  <mapTip>' + xmlEscape(qgisMapTip(maxPhotos)) + '</mapTip>\n' +
+    '  <fieldConfiguration>\n' + fields + '  </fieldConfiguration>\n' +
+    '</qgis>\n';
+}
+
+function damageStyleQml(maxPhotos) {
+  const cats = DAMAGE_STATES.map(function(d) {
+    return { value: String(d.index), label: d.label, color: d.color };
+  }).concat([{ value: '', label: 'Not assessed', color: UNASSESSED_COLOR }]);
+  return qgisStyleQml(maxPhotos, 'ds_index', cats, 'circle');
+}
+
+function consequenceStyleQml(maxPhotos) {
+  const cats = CONSEQUENCE_LEVELS.map(function(x) {
+    return { value: String(x.index), label: x.label, color: x.color };
+  }).concat([{ value: '', label: 'Not assessed', color: UNASSESSED_COLOR }]);
+  return qgisStyleQml(maxPhotos, 'consequence_index', cats, 'square');
+}
+
+function priorityStyleQml(maxPhotos) {
+  const cats = PRIORITY_BANDS.map(function(b) {
+    return { value: b.label, label: b.label, color: b.color };
+  }).concat([{ value: '', label: 'Not assessed', color: UNASSESSED_COLOR }]);
+  return qgisStyleQml(maxPhotos, 'priority_band', cats, 'diamond');
+}
+
+
+// DS1-DS2 remain in service, DS3 and above do not (Table 3). Shown as a split bar
+// because the ratio is the thing being read, not the two numbers separately.
+function renderServiceSplit() {
+  const el = document.getElementById('sm-service-split');
+  if (!el) return;
+  const serv = summaryRecords.filter(function(r) { return isServiceable(r) === true; }).length;
+  const non  = summaryRecords.filter(function(r) { return isServiceable(r) === false; }).length;
+  const none = summaryRecords.length - serv - non;
+  const rated = serv + non;
+  if (!rated) { el.innerHTML = ''; return; }
+
+  const pctS = Math.round(serv / rated * 100);
+  const servColor = SEVERITY_COLORS[0], nonColor = SEVERITY_COLORS[3];
+  el.innerHTML =
+    '<div style="border-top:1px solid var(--border);padding-top:10px;">' +
+      '<div style="display:flex;height:16px;border-radius:4px;overflow:hidden;background:var(--bg);">' +
+        (serv ? '<div style="width:' + pctS + '%;background:' + servColor + ';"></div>' : '') +
+        (non  ? '<div style="flex:1;background:' + nonColor + ';"></div>' : '') +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:12px;">' +
+        '<div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + servColor + ';margin-right:5px;"></span>' +
+          '<strong>Serviceable</strong> (DS1–DS2): <strong>' + serv + '</strong></div>' +
+        '<div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + nonColor + ';margin-right:5px;"></span>' +
+          '<strong>Non-serviceable</strong> (DS3+): <strong>' + non + '</strong></div>' +
+      '</div>' +
+      (none ? '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">' + none +
+              ' record' + (none === 1 ? '' : 's') + ' without a damage state are not counted.</div>' : '') +
+    '</div>';
 }
 
 </script>
