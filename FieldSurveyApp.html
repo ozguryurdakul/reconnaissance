@@ -453,7 +453,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.0</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.0 · build 2026-10-22.4</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -793,7 +793,7 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">v2.0</span>
+        Version: <span id="app-version">v2.0 · build 2026-10-22.4</span>
       </div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
@@ -3580,7 +3580,8 @@ const CITATION_TEXT = 'Yurdakul, Ö. (2026). FieldSurvey: A web application for 
   + 'Faculty of Transport Engineering, University of Pardubice. '
   + 'https://github.com/ozguryurdakul/reconnaissance';
 
-const APP_VERSION = 'v2.0';
+// Bumped on every build so a cached copy is immediately identifiable.
+const APP_VERSION = 'v2.0 · build 2026-10-22.4';
 
 function copyCitation() {
   const done = function() { showToast('Citation copied'); };
