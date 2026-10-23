@@ -419,6 +419,44 @@
   }
   #map-mode button.active { background: var(--primary); color: #fff; }
 
+  #map-filter {
+    /* second row under the mode switcher: nothing fits beside it at phone width */
+    position: absolute; top: 52px; right: 12px; z-index: 500;
+    background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: var(--shadow-sm); padding: 0;
+  }
+  #map-filter select {
+    border: none; background: none; padding: 7px 10px; font-size: 12px; font-weight: 700;
+    color: var(--text); cursor: pointer; border-radius: 10px; max-width: 200px;
+    appearance: none; padding-right: 26px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a2332' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center;
+  }
+  #map-filter.filtered { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
+
+  .sm-filter {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 12px; box-shadow: var(--shadow-sm);
+  }
+  .sm-filter label { font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-muted); white-space: nowrap; }
+  .sm-filter select { flex: 1; border: none; background: none; font-size: 14px;
+    font-weight: 700; color: var(--text); cursor: pointer; outline: none; min-width: 0; }
+  .sm-filter.filtered { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
+
+  /* Shown when the chosen asset type has no records, so an empty map or an
+     all-zero summary reads as "nothing surveyed yet" rather than a fault. */
+  .filter-empty {
+    background: #fff8e1; border: 1px solid #ffe082; border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: #6d4c00;
+    line-height: 1.45;
+  }
+  .filter-empty.map-variant {
+    position: absolute; top: 148px; left: 12px; right: 12px; z-index: 500;
+    margin-bottom: 0; box-shadow: var(--shadow-sm);
+  }
+
   #map-legend {
     position: absolute; bottom: 20px; left: 12px; z-index: 500;
     background: rgba(255,255,255,0.95); border: 1px solid var(--border);
@@ -453,7 +491,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.0 · build 2026-10-22.4</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.1 · build 2026-10-23.3</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -511,6 +549,8 @@
     <button data-mode="consequence" onclick="setMapMode('consequence')">Consequence</button>
     <button data-mode="priority" onclick="setMapMode('priority')">Priority</button>
   </div>
+  <div id="map-filter"><select id="map-filter-select" onchange="setAssetFilter(this.value)"></select></div>
+  <div id="map-filter-empty" class="filter-empty map-variant" style="display:none;"></div>
   <div id="map-legend"></div>
   <div id="osm-hint">
     📍 Tap the map to set location
@@ -538,6 +578,12 @@
 <div class="screen" id="screen-summary" style="overflow-y:auto;padding:14px;">
   <div style="font-size:19px;font-weight:800;margin-bottom:2px;">Summary</div>
 
+
+  <div class="sm-filter" id="sm-filter">
+    <label for="sm-filter-select">Asset type</label>
+    <select id="sm-filter-select" onchange="setAssetFilter(this.value)"></select>
+  </div>
+  <div id="filter-empty" class="filter-empty" style="display:none;"></div>
 
   <div class="stat-row" style="margin-bottom:14px;">
     <div class="stat-box"><div class="stat-num" id="sm-total" style="font-size:22px;">0</div><div class="stat-label">Records</div></div>
@@ -793,7 +839,7 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">v2.0 · build 2026-10-22.4</span>
+        Version: <span id="app-version">v2.1 · build 2026-10-23.3</span>
       </div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
@@ -905,6 +951,7 @@
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('building')">Building</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('road')">Road</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('bridge')">Bridge</div>
+          <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('railway')">Railway</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('retaining-wall')">Retaining Wall</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('infrastructure')">Infrastructure</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('other')">Other</div>
@@ -970,6 +1017,29 @@
         <div class="field-group">
           <label class="field-label">Speed Limit (km/h)</label>
           <input class="field-input" id="f-road-speed" type="number" min="0" max="200" placeholder="e.g. 50">
+        </div>
+      </div>
+
+      <!-- RAILWAY -->
+      <div class="asset-fields" id="af-railway" style="display:none;flex-direction:column;gap:12px;">
+        <div class="field-group">
+          <label class="field-label">Number of Tracks</label>
+          <input class="field-input" id="f-rail-tracks" type="number" min="1" max="20" placeholder="e.g. 2">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Electrified</label>
+          <select class="field-input" id="f-rail-electrified">
+            <option value="">— Select —</option>
+            <option>Yes</option><option>No</option><option>Partially</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Segment Length (m)</label>
+          <input class="field-input" id="f-rail-length" type="number" min="0" placeholder="e.g. 400">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Max Speed (km/h)</label>
+          <input class="field-input" id="f-rail-speed" type="number" min="0" max="400" placeholder="e.g. 120">
         </div>
       </div>
 
@@ -1378,6 +1448,87 @@ function updateOperationalStatus() {
   box.innerHTML = '<strong>' + o.full + '</strong>' +
     '<div style="font-size:12px;opacity:0.9;margin-top:2px;">' +
     (o.serviceable ? 'Serviceable' : 'Non-serviceable') + '</div>';
+}
+
+
+// ── Asset type filter ───────────────────────────
+// One filter shared by the map and the summary: two independent ones could drift
+// apart and the mismatch would be invisible. Exports deliberately ignore it.
+const ASSET_TYPES = ['Building', 'Road', 'Bridge', 'Railway', 'Retaining Wall', 'Infrastructure', 'Other'];
+let assetFilter = 'all';
+
+function matchesAssetFilter(r) {
+  return assetFilter === 'all' || (r && r.assetType === assetFilter);
+}
+
+// A filter naming a type this build no longer has would hide every record behind
+// a blank dropdown, so anything unrecognised falls back to showing everything.
+function normalizeAssetFilter(v) {
+  return (v && v !== 'all' && ASSET_TYPES.indexOf(v) !== -1) ? v : 'all';
+}
+
+async function setAssetFilter(v) {
+  assetFilter = normalizeAssetFilter(v);
+  try { localStorage.setItem('fs_asset_filter', assetFilter); } catch(e) {}
+  syncAssetFilterControls();   // both controls change together, before the db read
+  await buildAssetFilterOptions();
+  await refreshAllMarkers();
+  if (document.getElementById('screen-summary').classList.contains('active')) renderSummary();
+}
+
+// Every asset type is offered whether or not it has records yet, so the list never
+// shifts mid-survey. Counts come from the data, and this is also the single place
+// the empty-state note is decided - every path that changes records or the filter
+// comes through here, so the note cannot go stale.
+async function buildAssetFilterOptions() {
+  let records = [];
+  try { records = DB ? await dbGetAll() : []; } catch(e) { records = []; }
+  const counts = {};
+  records.forEach(function(r) {
+    const t = r.assetType || 'Other';
+    counts[t] = (counts[t] || 0) + 1;
+  });
+  assetFilter = normalizeAssetFilter(assetFilter);
+  const opts = ['<option value="all">All assets (' + records.length + ')</option>']
+    .concat(ASSET_TYPES.map(function(t) {
+      return '<option value="' + t + '">' + t + ' (' + (counts[t] || 0) + ')</option>';
+    }));
+  ['map-filter-select', 'sm-filter-select'].forEach(function(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = opts.join('');
+    sel.value = assetFilter;
+  });
+  showFilterEmptyState(assetFilter === 'all' ? records.length : (counts[assetFilter] || 0));
+  syncAssetFilterControls();
+}
+
+function syncAssetFilterControls() {
+  const on = assetFilter !== 'all';
+  ['map-filter', 'sm-filter'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('filtered', on);
+  });
+  ['map-filter-select', 'sm-filter-select'].forEach(function(id) {
+    const sel = document.getElementById(id);
+    if (sel && sel.value !== assetFilter) sel.value = assetFilter;
+  });
+}
+
+// Every type stays selectable, so one may legitimately have no records.
+// Say so plainly instead of leaving a blank map or a summary full of zeros.
+function showFilterEmptyState(count) {
+  const show = assetFilter !== 'all' && count === 0;
+  const msg = show
+    ? 'No <strong>' + assetFilter + '</strong> records yet. Choose another asset type, '
+      + 'or pick <strong>All assets</strong> to see everything.'
+    : '';
+  ['filter-empty', 'map-filter-empty'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = msg;
+    el.style.display = show ? 'block' : 'none';
+  });
 }
 
 // ── derived values ──────────────────────────────
@@ -1807,7 +1958,9 @@ async function refreshAllMarkers() {
   const records = await dbGetAll();
   Object.values(recordMarkers).forEach(function(m) { map.removeLayer(m); });
   recordMarkers = {};
-  records.forEach(function(r) { addMarkerForRecord(r); });
+  const shown = records.filter(matchesAssetFilter);
+  shown.forEach(function(r) { addMarkerForRecord(r); });
+  showFilterEmptyState(shown.length);
 }
 
 function getDamageColorClass(record) {
@@ -1842,7 +1995,9 @@ function getDamageColorClass(record) {
 async function loadRecordsOnMap() {
   if (!DB) return;
   const records = await dbGetAll();
-  records.forEach(r => addMarkerForRecord(r));
+  const shown = records.filter(matchesAssetFilter);
+  shown.forEach(r => addMarkerForRecord(r));
+  showFilterEmptyState(shown.length);
   updateCounts(records);
 }
 
@@ -1956,6 +2111,7 @@ function resetForm() {
   document.querySelectorAll('.asset-fields').forEach(el => el.style.display = 'none');
   ['f-address','f-asset-type','f-building-use','f-floors','f-construction','f-year-building','f-asset-ref',
    'f-road-type','f-road-surface','f-road-lanes','f-road-length','f-road-speed',
+   'f-rail-tracks','f-rail-electrified','f-rail-length','f-rail-speed',
    'f-bridge-type','f-bridge-spans','f-bridge-span-length','f-bridge-length','f-bridge-material','f-year-bridge','f-bridge-capacity',
    'f-wall-type','f-wall-height','f-wall-length','f-wall-material',
    'f-infra-type','f-infra-status','f-other-desc',
@@ -2221,6 +2377,11 @@ async function submitRecord() {
     roadLanes: document.getElementById('f-road-lanes').value,
     roadLength: document.getElementById('f-road-length').value,
     roadSpeed: document.getElementById('f-road-speed').value,
+    // Railway
+    railTracks: val('f-rail-tracks'),
+    railElectrified: val('f-rail-electrified'),
+    railLength: val('f-rail-length'),
+    railSpeed: val('f-rail-speed'),
     // Bridge
     bridgeType: document.getElementById('f-bridge-type').value,
     bridgeSpans: document.getElementById('f-bridge-spans').value,
@@ -2275,7 +2436,8 @@ async function submitRecord() {
   };
 
   await dbPut(record);
-  addMarkerForRecord(record);
+  if (matchesAssetFilter(record)) addMarkerForRecord(record);
+  buildAssetFilterOptions();
   const all = await dbGetAll();
   updateCounts(all);
   closePanel();
@@ -2321,7 +2483,7 @@ async function editRecord(id) {
   }
   // Restore asset-specific fields
   if (r.assetType) {
-    const typeMap = {'Building':'building','Road':'road','Bridge':'bridge','Retaining Wall':'retaining-wall','Infrastructure':'infrastructure','Other':'other'};
+    const typeMap = {'Building':'building','Road':'road','Bridge':'bridge','Railway':'railway','Retaining Wall':'retaining-wall','Infrastructure':'infrastructure','Other':'other'};
     const key = typeMap[r.assetType];
     if (key) switchAssetFields(key);
   }
@@ -2337,6 +2499,10 @@ async function editRecord(id) {
   document.getElementById('f-road-length').value = r.roadLength || '';
   document.getElementById('f-road-speed').value = r.roadSpeed || '';
   // Bridge
+  setVal('f-rail-tracks', r.railTracks);
+  setVal('f-rail-electrified', r.railElectrified);
+  setVal('f-rail-length', r.railLength);
+  setVal('f-rail-speed', r.railSpeed);
   document.getElementById('f-bridge-type').value = r.bridgeType || '';
   document.getElementById('f-bridge-spans').value = r.bridgeSpans || '';
   document.getElementById('f-bridge-span-length').value = r.bridgeSpanLength || '';
@@ -2418,6 +2584,7 @@ async function deleteRecord(id) {
   const all = await dbGetAll();
   updateCounts(all);
   renderRecords();
+  buildAssetFilterOptions();
   showToast('Record deleted');
 }
 
@@ -2428,6 +2595,7 @@ async function clearAllRecords() {
   recordMarkers = {};
   updateCounts([]);
   renderRecords();
+  buildAssetFilterOptions();
   showToast('All records cleared');
 }
 
@@ -2507,11 +2675,10 @@ async function renderRecords() {
         </div>`;
     }
 
-    // Asset info
+    // Asset info - assetDetailOf covers every asset type, so a bridge or railway
+    // card shows its own fields instead of only the building ones.
     const assetDetails = [
-      r.buildingUse, r.construction,
-      r.floors ? r.floors + ' floors' : '',
-      r.yearBuilt ? 'Built ~' + r.yearBuilt : '',
+      assetDetailOf(r).replace(/; /g, ' · '),
       r.assetRef
     ].filter(Boolean).join(' · ');
 
@@ -2581,6 +2748,7 @@ async function exportXLSX() {
     'OSM Type': r.osmType,
     'OSM Name': r.osmName,
     'Asset Type': r.assetType,
+    'Asset Detail': assetDetailOf(r),
     'Building Use': r.buildingUse,
     'Floors': r.floors,
     'Construction': r.construction,
@@ -2636,6 +2804,12 @@ function buildGeoJSONFeatures(records, includePhotos) {
       // Bridge
       bridgeType: r.bridgeType, bridgeSpans: r.bridgeSpans, bridgeSpanLength: r.bridgeSpanLength,
       bridgeLength: r.bridgeLength, bridgeMaterial: r.bridgeMaterial,
+      // Railway
+      railTracks: r.railTracks, railElectrified: r.railElectrified,
+      railLength: r.railLength, railSpeed: r.railSpeed,
+      // Every asset type flattened into one readable field, so a type added later
+      // cannot be silently dropped from this export the way railway fields were.
+      asset_detail: assetDetailOf(r),
       // Damage
       damageScale: r.damageScale, emsGrade: r.emsGrade, emsStructural: r.emsStructural,
       operational_status: (operationalStatusOf(r) || {}).full || '',
@@ -2726,6 +2900,7 @@ async function loadFullSession(input, replace) {
         syncSettingsFields();
       }
       showToast(`${count} records loaded ✓`);
+      await buildAssetFilterOptions();
       renderRecords();
       const status = document.getElementById('session-status');
       if (status) {
@@ -2759,11 +2934,12 @@ async function exportCSV() {
     'hazusOccupancy','customCondition','customAction','customScore',
     'consequence','urgency','followUp','notes'];
   // derived values are computed, not stored, so they are appended explicitly
-  const derived = ['operational_status','serviceability','ds_index','consequence_index','priority_score','priority_band'];
+  const derived = ['asset_detail','operational_status','serviceability','ds_index','consequence_index','priority_score','priority_band'];
   const csv = [keys.concat(derived).join(','), ...records.map(r => {
     const p = priorityOf(r) || {};
     return keys.map(k => JSON.stringify(r[k] ?? ''))
-      .concat([ JSON.stringify((operationalStatusOf(r) || {}).full || ''), JSON.stringify(serviceabilityLabel(r)),
+      .concat([ JSON.stringify(assetDetailOf(r)),
+                JSON.stringify((operationalStatusOf(r) || {}).full || ''), JSON.stringify(serviceabilityLabel(r)),
                 JSON.stringify(dsIndexOf(r) || ''), JSON.stringify(consequenceIndexOf(r) || ''),
                 JSON.stringify(p.score || ''), JSON.stringify(p.band || '') ]).join(',');
   })].join('\n');
@@ -2825,6 +3001,7 @@ async function init() {
 
   try {
     initMap();
+    try { assetFilter = normalizeAssetFilter(localStorage.getItem('fs_asset_filter')); } catch(e) { assetFilter = 'all'; }
     try { mapMode = localStorage.getItem('fs_map_mode') || 'damage'; } catch(e) { mapMode = 'damage'; }
     setMapMode(mapMode);
   } catch(e) {
@@ -2848,6 +3025,7 @@ async function init() {
   }
 
   try {
+    await buildAssetFilterOptions();
     await loadRecordsOnMap();
   } catch(e) {
     console.error('could not draw records', e);
@@ -3355,6 +3533,12 @@ function assetDetailOf(r) {
     if (r.roadSurface) d.push('Surface: ' + r.roadSurface);
     if (r.roadLanes) d.push('Lanes: ' + r.roadLanes);
     if (r.roadLength) d.push('Length: ' + r.roadLength + ' m');
+    if (r.roadSpeed) d.push('Speed limit: ' + r.roadSpeed + ' km/h');
+  } else if (r.assetType === 'Railway') {
+    if (r.railTracks) d.push('Tracks: ' + r.railTracks);
+    if (r.railElectrified) d.push('Electrified: ' + r.railElectrified);
+    if (r.railLength) d.push('Length: ' + r.railLength + ' m');
+    if (r.railSpeed) d.push('Max speed: ' + r.railSpeed + ' km/h');
   } else if (r.assetType === 'Retaining Wall') {
     if (r.wallType) d.push('Type: ' + r.wallType);
     if (r.wallHeight) d.push('Height: ' + r.wallHeight + ' m');
@@ -3581,7 +3765,7 @@ const CITATION_TEXT = 'Yurdakul, Ö. (2026). FieldSurvey: A web application for 
   + 'https://github.com/ozguryurdakul/reconnaissance';
 
 // Bumped on every build so a cached copy is immediately identifiable.
-const APP_VERSION = 'v2.0 · build 2026-10-22.4';
+const APP_VERSION = 'v2.1 · build 2026-10-23.3';
 
 function copyCitation() {
   const done = function() { showToast('Citation copied'); };
@@ -3618,7 +3802,9 @@ let summaryRecords = [];
 
 async function renderSummary() {
   if (!DB) return;
-  summaryRecords = await dbGetAll();
+  await buildAssetFilterOptions();
+  summaryRecords = (await dbGetAll()).filter(matchesAssetFilter);
+  showFilterEmptyState(summaryRecords.length);
   const scored = summaryRecords.filter(function(r) { return priorityOf(r); });
   const unassessed = summaryRecords.length - scored.length;
 
