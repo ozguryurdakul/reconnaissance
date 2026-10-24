@@ -445,6 +445,15 @@
     font-weight: 700; color: var(--text); cursor: pointer; outline: none; min-width: 0; }
   .sm-filter.filtered { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
 
+  /* The published wording for the chosen component damage state, so the inspector
+     is reading the definition rather than recalling it. */
+  .comp-desc {
+    margin-top: 8px; padding: 9px 11px; border-radius: 8px;
+    background: var(--bg); border-left: 3px solid var(--primary);
+    font-size: 12.5px; line-height: 1.5; color: var(--text);
+  }
+  #component-list .field-group { margin-bottom: 18px; }
+
   /* Shown when the chosen asset type has no records, so an empty map or an
      all-zero summary reads as "nothing surveyed yet" rather than a fault. */
   .filter-empty {
@@ -491,7 +500,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.1 · build 2026-10-23.3</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.4 · build 2026-10-24.5</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -513,8 +522,9 @@
     <div class="field-group">
       <label class="field-label">Default Damage Scale</label>
       <select class="field-input" id="setup-scale">
+        <option value="auto" selected>Automatic (by asset type)</option>
+        <option value="infrads">Damage State (DS1–DS5)</option>
         <option value="none">None (inventory only)</option>
-        <option value="ems98" selected>EMS-98 (interim)</option>
       </select>
     </div>
     <div class="field-group">
@@ -774,8 +784,9 @@
       <div class="field-group">
         <label class="field-label">Default Damage Scale</label>
         <select class="field-input" id="set-scale">
+        <option value="auto" selected>Automatic (by asset type)</option>
+        <option value="infrads">Damage State (DS1–DS5)</option>
         <option value="none">None (inventory only)</option>
-        <option value="ems98" selected>EMS-98 (interim)</option>
       </select>
       </div>
       <button class="btn btn-primary btn-sm" onclick="saveSettings()" style="align-self:flex-start">Save Settings</button>
@@ -839,7 +850,7 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">v2.1 · build 2026-10-23.3</span>
+        Version: <span id="app-version">v2.4 · build 2026-10-24.5</span>
       </div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
@@ -951,6 +962,7 @@
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('building')">Building</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('road')">Road</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('bridge')">Bridge</div>
+          <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('culvert')">Culvert</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('railway')">Railway</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('retaining-wall')">Retaining Wall</div>
           <div class="chip" onclick="selectChip(this,'asset-chips','f-asset-type');switchAssetFields('infrastructure')">Infrastructure</div>
@@ -1021,6 +1033,46 @@
       </div>
 
       <!-- RAILWAY -->
+      <div class="asset-fields" id="af-culvert" style="display:none;flex-direction:column;gap:12px;">
+        <div class="field-group">
+          <label class="field-label">Culvert Type</label>
+          <select class="field-input" id="f-culvert-type">
+            <option value="">— Select —</option>
+            <option>Circular pipe</option><option>Box</option><option>Arch</option>
+            <option>Pipe-arch</option><option>Frame</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Span / Diameter (m)</label>
+          <div class="field-hint">Clear opening. Larger openings are normally recorded as bridges — use whichever span threshold your standard sets.</div>
+          <input class="field-input" id="f-culvert-span" type="number" min="0" step="0.1" placeholder="e.g. 1.2">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Number of Barrels</label>
+          <input class="field-input" id="f-culvert-barrels" type="number" min="1" max="20" placeholder="e.g. 1">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Material</label>
+          <select class="field-input" id="f-culvert-material">
+            <option value="">— Select —</option>
+            <option>Concrete</option><option>Reinforced concrete</option><option>Corrugated steel</option>
+            <option>Masonry / stone</option><option>Plastic / HDPE</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Length (m)</label>
+          <input class="field-input" id="f-culvert-length" type="number" min="0" placeholder="e.g. 12">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Blockage / Debris</label>
+          <div class="field-hint">Clogging of the opening is the usual flood failure mechanism here.</div>
+          <select class="field-input" id="f-culvert-blockage">
+            <option value="">— Select —</option>
+            <option>None</option><option>Partial (&lt; 50%)</option><option>Severe (&gt; 50%)</option><option>Fully blocked</option>
+          </select>
+        </div>
+      </div>
+
       <div class="asset-fields" id="af-railway" style="display:none;flex-direction:column;gap:12px;">
         <div class="field-group">
           <label class="field-label">Number of Tracks</label>
@@ -1150,9 +1202,10 @@
 
       <div class="field-group">
         <label class="field-label">Damage Scale</label>
-        <select class="field-input" id="f-scale-select" onchange="switchScale(this.value)">
+        <div class="field-hint" id="scale-hint">Bridges and buildings are assessed component by component; every other asset records a single DS1–DS5 grade.</div>
+        <select class="field-input" id="f-scale-select" onchange="switchScale(this.value, true)">
           <option value="none">None (inventory only)</option>
-          <option value="ems98">EMS-98 (interim)</option>
+          <option value="infrads">Damage State (DS1–DS5)</option>
         </select>
       </div>
     </div>
@@ -1167,41 +1220,48 @@
       </div>
 
       <!-- EMS-98 -->
-      <div class="scale-section" id="scale-ems98">
-        <div class="scale-title">EMS-98 Classification</div>
-        <div class="field-group">
-          <label class="field-label">Damage Grade</label>
-          <div class="chip-group" id="ems98-chips">
-            <div class="chip damage-1" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D1 — Negligible</div>
-            <div class="chip damage-2" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D2 — Slight</div>
-            <div class="chip damage-3" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D3 — Moderate</div>
-            <div class="chip damage-4" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D4 — Heavy</div>
-            <div class="chip damage-5" onclick="selectChip(this,'ems98-chips','f-ems-grade')" data-group="ems98-chips">D5 — Destruction</div>
+
+      <!-- INFRASTRUCTURE DS -->
+      <div class="scale-section" id="scale-infrads">
+        <div class="scale-title">Damage State Classification</div>
+
+        <!-- Bridges only: assessed component by component, then rolled up. -->
+        <div id="asset-components" style="display:none;">
+          <div class="field-hint" style="margin-bottom:10px;">
+            Rate each component group. The overall damage state is the worst of them.
+            Leave a group as <strong>Not assessed</strong> if you could not inspect it.
+            Each group stops where its own scale ends.
           </div>
-          <input type="hidden" id="f-ems-grade">
+          <div id="component-list"></div>
+          <div class="field-group">
+            <label class="field-label">Overall Damage State</label>
+            <div id="component-overall" style="border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;
+                 background:var(--bg);color:var(--text-muted);">Rate a component to see the overall damage state.</div>
+          </div>
+          <div class="divider"></div>
         </div>
-        <div class="field-group">
-          <label class="field-label">Structural Damage</label>
-          <select class="field-input" id="f-ems-structural">
-            <option value="">— Select —</option>
-            <option>None</option><option>Minor cracking</option><option>Cracks in walls</option>
-            <option>Large cracks / partial collapse</option><option>Total collapse</option>
-          </select>
+
+        <!-- Every other transport asset: a single overall grade. -->
+        <div class="field-group" id="infrads-single">
+          <label class="field-label">Damage State</label>
+          <div class="chip-group" id="infrads-chips">
+            <div class="chip damage-1" onclick="selectChip(this,'infrads-chips','f-infra-grade')" data-group="infrads-chips">DS1 — Null</div>
+            <div class="chip damage-2" onclick="selectChip(this,'infrads-chips','f-infra-grade')" data-group="infrads-chips">DS2 — Minor</div>
+            <div class="chip damage-3" onclick="selectChip(this,'infrads-chips','f-infra-grade')" data-group="infrads-chips">DS3 — Moderate</div>
+            <div class="chip damage-4" onclick="selectChip(this,'infrads-chips','f-infra-grade')" data-group="infrads-chips">DS4 — Heavy</div>
+            <div class="chip damage-5" onclick="selectChip(this,'infrads-chips','f-infra-grade')" data-group="infrads-chips">DS5 — Extreme</div>
+          </div>
+          <input type="hidden" id="f-infra-grade">
         </div>
-        <div class="field-group">
-          <label class="field-label">Non-Structural Damage</label>
-          <select class="field-input" id="f-ems-nonstructural">
-            <option value="">— Select —</option>
-            <option>None</option><option>Fine cracks in plaster</option><option>Fallen plaster</option>
-            <option>Damaged partitions</option><option>Extensive damage</option>
-          </select>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Operational Status</label>
-          <div class="field-hint">Derived from the damage state.</div>
-          <div id="operational-status" style="border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;
-               background:var(--bg);color:var(--text-muted);">Set a damage state to see the operational status.</div>
-        </div>
+      </div>
+
+      <!-- Operational status is derived from the damage state on either scale, so it
+           sits outside both sections rather than being duplicated in each. -->
+      <div class="field-group" id="operational-status-group" style="display:none;">
+        <label class="field-label">Operational Status</label>
+        <div class="field-hint">Derived from the damage state.</div>
+        <div id="operational-status" style="border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;
+             background:var(--bg);color:var(--text-muted);">Set a damage state to see the operational status.</div>
       </div>
 
 
@@ -1353,12 +1413,15 @@ const UNASSESSED_COLOR = '#adb5bd';
 
 // Interim scale: EMS-98. Replace labels here with the DS1-DS5 definitions from
 // Yurdakul et al. (2026) when available - nothing else needs to change.
+// The canonical five states. These labels are what the map legend, the summary
+// charts and the exported GIS styles read out, so they are also the grade labels
+// offered on the form - one wording everywhere.
 const DAMAGE_STATES = [
-  { index: 1, label: 'D1 — Negligible',  short: 'DS1', color: SEVERITY_COLORS[0] },
-  { index: 2, label: 'D2 — Slight',      short: 'DS2', color: SEVERITY_COLORS[1] },
-  { index: 3, label: 'D3 — Moderate',    short: 'DS3', color: SEVERITY_COLORS[2] },
-  { index: 4, label: 'D4 — Heavy',       short: 'DS4', color: SEVERITY_COLORS[3] },
-  { index: 5, label: 'D5 — Destruction', short: 'DS5', color: SEVERITY_COLORS[4] }
+  { index: 1, label: 'DS1 — Null',     short: 'DS1', color: SEVERITY_COLORS[0] },
+  { index: 2, label: 'DS2 — Minor',    short: 'DS2', color: SEVERITY_COLORS[1] },
+  { index: 3, label: 'DS3 — Moderate', short: 'DS3', color: SEVERITY_COLORS[2] },
+  { index: 4, label: 'DS4 — Heavy',    short: 'DS4', color: SEVERITY_COLORS[3] },
+  { index: 5, label: 'DS5 — Extreme',  short: 'DS5', color: SEVERITY_COLORS[4] }
 ];
 
 // Consequence for the community if the asset stays out of service - deliberately
@@ -1435,7 +1498,7 @@ function serviceabilityLabel(r) {
 function updateOperationalStatus() {
   const box = document.getElementById('operational-status');
   if (!box) return;
-  const o = operationalStatusOf({ damageScale: effectiveDamageScale(), emsGrade: val('f-ems-grade') });
+  const o = operationalStatusOf(formRecordSnapshot());
   if (!o) {
     box.style.background = 'var(--bg)';
     box.style.color = 'var(--text-muted)';
@@ -1451,10 +1514,146 @@ function updateOperationalStatus() {
 }
 
 
+// ── Damage scales ───────────────────────────────
+// Two scales, one index space. EMS-98 is a macroseismic scale for earthquake damage
+// to buildings; the infrastructure scale is the DS1-DS5 classification for bridges and
+// transport assets. Both map to indices 1..5, so the priority matrix, operational
+// status, map colours and the GIS styles (which key on ds_index) are unaffected by
+// which scale a record used.
+const DAMAGE_SCALES = {
+  // Retired. Kept only so records written before the switch still resolve to an
+  // index; it has no form section and cannot be chosen for a new record. Because the
+  // two scales share an index space, those records read out under the current naming.
+  ems98: {
+    key: 'ems98', label: 'EMS-98', retired: true, field: 'emsGrade',
+    grades: ['D1 — Negligible', 'D2 — Slight', 'D3 — Moderate', 'D4 — Heavy', 'D5 — Destruction']
+  },
+  infrads: {
+    key: 'infrads', label: 'Infrastructure DS', title: 'Damage State Classification',
+    field: 'infraGrade', chips: 'infrads-chips', input: 'f-infra-grade',
+    grades: DAMAGE_STATES.map(function(d) { return d.label; })
+  }
+};
+// One live scale for every asset type. Bridges add a component breakdown on top of
+// it; every other asset records a single DS1-DS5 grade.
+function defaultScaleFor() { return 'infrads'; }
+
+// ── Bridge components ───────────────────────────
+// Bridges are assessed component by component and rolled up to one overall DS.
+// Each category's scale ends where the published table ends: total loss of every
+// serviceability element is still DS2, so there is no higher rung to offer. The cap
+// is the end of the scale, not a restriction placed on top of it.
+const BRIDGE_COMPONENTS = [
+  { key: 'serviceability', field: 'compServiceability', label: 'Serviceability elements', max: 2,
+    examples: 'Drainage, guardrails and barriers, lighting, pedestrian and bicycle facilities, parapets, maintenance access, utilities',
+    desc: { 1: 'Minor to moderate damage and/or detachment requiring more than cosmetic repairs',
+            2: 'Major damage and/or total loss of some or all elements' } },
+  { key: 'secondary', field: 'compSecondary', label: 'Secondary elements', max: 3,
+    examples: 'Approach slopes, embankment fill, expansion joints, pavement, railway superstructure, backwall',
+    desc: { 1: 'From cosmetic damage to onset of movement of components',
+            2: 'Moderate movement of components while remaining structurally stable',
+            3: 'Total failure and/or major movement of approach slopes, embankment fill, expansion joints, pavement or backwall' } },
+  { key: 'primary', field: 'compPrimary', label: 'Primary structural elements', max: 5,
+    examples: 'Cables, deck, beams and girders, piers and columns, abutments, foundations, bearings',
+    desc: { 1: 'Null — no damage to load-bearing components',
+            2: 'Clogging of the opening with partial impact, minor cracking and spalling, slight scour with bearing capacity intact',
+            3: 'Clogging with major effect, moderate residual deformations, initiation of local failure mechanisms, moderate movement at connections, visible scour with capacity partially intact',
+            4: 'Major degradation of piers/columns without collapse, significant misalignment or deck movement, major undermining and differential settlement, visible rotation or large tilt',
+            5: 'Total or partial collapse, foundation or abutment failure, loss of connections, deck unseating, extreme tilting or extreme scour' } }
+];
+// Buildings are assessed the same way, split by what carries load. The structural
+// scale runs the full range; non-structural stops at DS4, because DS5 means the
+// structure itself is destroyed - a gutted interior over an intact frame is not that.
+const BUILDING_COMPONENTS = [
+  { key: 'structural', field: 'compStructural', label: 'Structural elements', max: 5,
+    examples: 'Load-bearing walls, frame, columns, beams, floors, foundations',
+    desc: { 1: 'No structural damage — hairline cracks in very few elements, load capacity unaffected',
+            2: 'Slight structural damage — cracks in many walls or members, load capacity essentially intact',
+            3: 'Moderate structural damage — large and extensive cracks in most walls or members, local mechanisms beginning',
+            4: 'Heavy structural damage — serious failure of walls, partial structural failure of roofs or floors',
+            5: 'Destruction — total or near-total collapse of the structure' } },
+  { key: 'nonstructural', field: 'compNonStructural', label: 'Non-structural elements', max: 4,
+    examples: 'Partitions, infill walls, plaster and finishes, ceilings, cladding, chimneys, parapets, services',
+    desc: { 1: 'Slight — fall of small pieces of plaster, loose stones from upper parts',
+            2: 'Moderate — fall of fairly large pieces of plaster, partial collapse of chimneys',
+            3: 'Heavy — roof tiles detach, chimneys fracture at the roof line, individual partitions or gable walls fail',
+            4: 'Very heavy — widespread failure of partitions, infill walls, cladding or services' } }
+];
+// Which asset types are assessed by component, and with which set. Everything not
+// listed here records a single overall grade.
+const COMPONENT_SETS = { 'Bridge': BRIDGE_COMPONENTS, 'Building': BUILDING_COMPONENTS };
+const ALL_COMPONENTS = BRIDGE_COMPONENTS.concat(BUILDING_COMPONENTS);
+function componentsFor(assetType) { return COMPONENT_SETS[assetType] || null; }
+function componentByKey(key) {
+  return ALL_COMPONENTS.find(function(c) { return c.key === key; }) || null;
+}
+
+function componentsAssessed(r) {
+  const set = r ? componentsFor(r.assetType) : null;
+  if (!set) return [];
+  return set
+    .map(function(c) { return { c: c, v: parseInt(r[c.field], 10) }; })
+    .filter(function(x) { return x.v >= 1 && x.v <= 5; });
+}
+// Overall is the worst assessed component - an asset is as damaged as its worst part.
+function componentOverallIndex(r) {
+  const a = componentsAssessed(r);
+  if (!a.length) return null;
+  return Math.max.apply(null, a.map(function(x) { return x.v; }));
+}
+// Which category decided the overall rating. Worth exporting: it separates bridges
+// shut by their embankment fill from bridges shut by their piers, and buildings
+// condemned by their frame from buildings merely stripped of their fabric.
+function governingComponents(r) {
+  const top = componentOverallIndex(r);
+  if (!top) return [];
+  return componentsAssessed(r).filter(function(x) { return x.v === top; }).map(function(x) { return x.c; });
+}
+function usesComponents(r) { return !!r && !!componentsFor(r.assetType) && componentsAssessed(r).length > 0; }
+// One component's DS as a number, or '' when it was not assessed - '' rather than 0
+// so a skipped component stays distinguishable from a rating in every export.
+function componentIndexOf(r, key) {
+  const c = componentByKey(key);
+  if (!c || !r || !componentsFor(r.assetType)) return '';
+  const v = parseInt(r[c.field], 10);
+  return (v >= 1 && v <= 5) ? v : '';
+}
+function governingLabelOf(r) {
+  if (!usesComponents(r)) return '';
+  return governingComponents(r).map(function(c) { return c.label; }).join(' + ');
+}
+// Restores the three component chip rows when an existing bridge record is reopened.
+function restoreBridgeComponents(r) {
+  const set = componentsFor(r && r.assetType);
+  if (!set) return;
+  renderComponents(r.assetType);
+  set.forEach(function(c) {
+    const v = parseInt(r[c.field], 10);
+    const group = document.getElementById('comp-' + c.key + '-chips');
+    const descBox = document.getElementById('comp-' + c.key + '-desc');
+    if (!group) return;
+    group.querySelectorAll('.chip').forEach(function(ch) { ch.classList.remove('selected'); });
+    if (descBox) descBox.style.display = 'none';
+    if (v >= 1 && v <= 5) {
+      setVal('f-comp-' + c.key, String(v));
+      const chip = group.querySelector('.chip.damage-' + v);
+      if (chip) chip.classList.add('selected');
+      if (descBox) { descBox.textContent = c.desc[v] || ''; descBox.style.display = 'block'; }
+    } else if (r[c.field] === '0') {
+      setVal('f-comp-' + c.key, '0');          // explicitly marked as not assessed
+      const chips = group.querySelectorAll('.chip');
+      if (chips.length) chips[chips.length - 1].classList.add('selected');
+    } else {
+      setVal('f-comp-' + c.key, '');
+    }
+  });
+  updateComponentOverall();
+}
+
 // ── Asset type filter ───────────────────────────
 // One filter shared by the map and the summary: two independent ones could drift
 // apart and the mismatch would be invisible. Exports deliberately ignore it.
-const ASSET_TYPES = ['Building', 'Road', 'Bridge', 'Railway', 'Retaining Wall', 'Infrastructure', 'Other'];
+const ASSET_TYPES = ['Building', 'Road', 'Bridge', 'Culvert', 'Railway', 'Retaining Wall', 'Infrastructure', 'Other'];
 let assetFilter = 'all';
 
 function matchesAssetFilter(r) {
@@ -1534,15 +1733,51 @@ function showFilterEmptyState(count) {
 // ── derived values ──────────────────────────────
 function dsIndexOf(r) {
   if (!r) return null;
-  if (r.damageScale === 'ems98' && r.emsGrade) {
-    const m = DAMAGE_STATES.find(d => d.label === r.emsGrade);
-    if (m) return m.index;
-    const n = parseInt(String(r.emsGrade).replace(/[^1-5]/, ''), 10);
-    return (n >= 1 && n <= 5) ? n : null;
+  // A bridge assessed component by component takes its overall from the worst one.
+  const comp = usesComponents(r) ? componentOverallIndex(r) : null;
+  if (comp) return comp;
+  // Otherwise the grade chosen on whichever scale the record used. Grades are matched
+  // by label first, then by the digit in the label, so a record written by an older
+  // build (or on a scale since retired) still resolves to the right index.
+  const scale = DAMAGE_SCALES[r.damageScale];
+  if (scale) {
+    const label = r[scale.field];
+    if (label) {
+      const i = scale.grades.indexOf(label);
+      if (i !== -1) return i + 1;
+      const n = parseInt(String(label).replace(/[^1-5]/, ''), 10);
+      return (n >= 1 && n <= 5) ? n : null;
+    }
+    return null;
   }
   if (r.damageScale === 'hazus'  && r.hazusState)      return LEGACY_DS_INDEX.hazus[r.hazusState]  || null;
   if (r.damageScale === 'custom' && r.customCondition) return LEGACY_DS_INDEX.custom[r.customCondition] || null;
   return null;
+}
+
+// The grade label to show for a record, whichever scale it used.
+function damageGradeLabelOf(r) {
+  if (!r) return '';
+  // A component-assessed bridge has no grade of its own: its label is the
+  // infrastructure wording for the rolled-up index.
+  if (usesComponents(r)) {
+    const ci = componentOverallIndex(r);
+    return ci ? DAMAGE_SCALES.infrads.grades[ci - 1] : '';
+  }
+  const scale = DAMAGE_SCALES[r.damageScale];
+  if (scale && r[scale.field]) {
+    // A retired scale's grade reads out at its equivalent step on the live scale, so
+    // one survey does not come back in two vocabularies.
+    if (scale.retired) {
+      const li = dsIndexOf(r);
+      return li ? DAMAGE_SCALES.infrads.grades[li - 1] : r[scale.field];
+    }
+    return r[scale.field];
+  }
+  if (r.damageScale === 'hazus')  return r.hazusState || '';
+  if (r.damageScale === 'custom') return r.customCondition || '';
+  const i = dsIndexOf(r);
+  return i ? ('DS' + i) : '';
 }
 
 function consequenceIndexOf(r) {
@@ -1562,13 +1797,6 @@ function priorityOf(r) {
 function damageColorOf(r) { const i = dsIndexOf(r);          return i ? SEVERITY_COLORS[i-1] : UNASSESSED_COLOR; }
 function consequenceColorOf(r) { const i = consequenceIndexOf(r); return i ? SEVERITY_COLORS[i-1] : UNASSESSED_COLOR; }
 function priorityColorOf(r) { const p = priorityOf(r);       return p ? p.color : UNASSESSED_COLOR; }
-
-function dsLabelOf(r) {
-  const i = dsIndexOf(r);
-  if (!i) return '';
-  if (r.damageScale === 'ems98') return r.emsGrade || '';
-  return (r.hazusState || r.customCondition || '') + ' (' + DAMAGE_STATES[i-1].short + ')';
-}
 
 // Null-safe form access: fields for retired scales no longer exist in the DOM.
 function val(id)        { const e = document.getElementById(id); return e ? e.value : ''; }
@@ -1591,7 +1819,9 @@ function effectiveDamageScale() {
 function formRecordSnapshot() {
   const base = editingRecord ? Object.assign({}, editingRecord) : {};
   base.damageScale = effectiveDamageScale();
-  base.emsGrade = val('f-ems-grade');
+  base.assetType = val('f-asset-type') || base.assetType;
+  base.infraGrade = val('f-infra-grade');
+  ALL_COMPONENTS.forEach(function(c) { base[c.field] = val('f-comp-' + c.key); });
   base.consequence = val('f-consequence');
   return base;
 }
@@ -1680,8 +1910,7 @@ function startSession() {
   saveSessionToStorage();
   updateTopbar();
   document.getElementById('setup-overlay').classList.add('hidden');
-  document.getElementById('f-scale-select').value = session.scale;
-  switchScale(session.scale);
+  applySessionScaleToForm();
   syncSettingsFields();
 }
 
@@ -1697,8 +1926,7 @@ function loadSession() {
       session = saved;
       updateTopbar();
       document.getElementById('setup-overlay').classList.add('hidden');
-      document.getElementById('f-scale-select').value = session.scale || 'ems98';
-      switchScale(session.scale || 'ems98');
+      applySessionScaleToForm();
       syncSettingsFields();
       return;
     }
@@ -1735,7 +1963,7 @@ function newSession() {
   localStorage.removeItem('fs_session');
   session = { name: '', id: '', org: '', mission: '', scale: 'ems98', date: new Date().toISOString().split('T')[0] };
   ['setup-name','setup-id','setup-org','setup-mission'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('setup-scale').value = 'ems98';
+  document.getElementById('setup-scale').value = 'auto';
   document.getElementById('setup-overlay').classList.remove('hidden');
 }
 
@@ -1963,33 +2191,13 @@ async function refreshAllMarkers() {
   showFilterEmptyState(shown.length);
 }
 
+// The severity class for a badge or marker. dsIndexOf already understands every
+// scale, the bridge component rollup and the retired scales, so this reads from it
+// rather than keeping its own per-scale table - the previous copy had drifted, and
+// did not know the current scale at all.
 function getDamageColorClass(record) {
-  const scale = record.damageScale;
-  if (scale === 'ems98') {
-    const g = record.emsGrade || '';
-    if (g.startsWith('D1')) return '1';
-    if (g.startsWith('D2')) return '2';
-    if (g.startsWith('D3')) return '3';
-    if (g.startsWith('D4')) return '4';
-    if (g.startsWith('D5')) return '5';
-  }
-  if (scale === 'hazus') {
-    const s = record.hazusState || '';
-    if (s === 'None') return 'none';
-    if (s === 'Slight') return '1';
-    if (s === 'Moderate') return '2';
-    if (s === 'Extensive') return '3';
-    if (s === 'Complete') return '4';
-  }
-  if (scale === 'custom') {
-    const c = record.customCondition || '';
-    if (c === 'Good') return '1';
-    if (c === 'Fair') return '2';
-    if (c === 'Poor') return '3';
-    if (c === 'Critical') return '4';
-    if (c === 'Failed') return '5';
-  }
-  return 'none';
+  const i = dsIndexOf(record);
+  return i ? String(i) : 'none';
 }
 
 async function loadRecordsOnMap() {
@@ -2005,10 +2213,7 @@ function addMarkerForRecord(r) {
   if (!map || !r.lat || !r.lng) return;
   const colorClass = getDamageColorClass(r);
   if (recordMarkers[r.id]) map.removeLayer(recordMarkers[r.id]);
-  const badgeLabel = r.damageScale === 'ems98' ? (r.emsGrade || 'EMS-98')
-    : r.damageScale === 'hazus' ? (r.hazusState || 'HAZUS')
-    : r.damageScale === 'custom' ? (r.customCondition || 'Custom')
-    : 'No Scale';
+  const badgeLabel = damageGradeLabelOf(r) || (r.damageScale && r.damageScale !== 'none' ? 'Not assessed' : 'No Scale');
   const badgeColor = {'1':SEVERITY_COLORS[0],'2':SEVERITY_COLORS[1],'3':SEVERITY_COLORS[2],'4':SEVERITY_COLORS[3],'5':SEVERITY_COLORS[4]}[colorClass] || UNASSESSED_COLOR;
   const popupHtml = `
     <div style="min-width:220px;font-family:system-ui,sans-serif;">
@@ -2046,12 +2251,26 @@ function addMarkerForRecord(r) {
 // ══════════════════════════════════════════════
 // PANEL / FORM
 // ══════════════════════════════════════════════
+// The session default may be 'auto', meaning follow the asset type. Resolve it in one
+// place so every entry point into the form agrees on which scale is showing.
+function resolveSessionScale(assetType) {
+  const s = session.scale || 'auto';
+  if (s === 'auto') return defaultScaleFor(assetType || val('f-asset-type'));
+  return s;
+}
+function applySessionScaleToForm() {
+  scaleChosenByHand = false;
+  const want = resolveSessionScale();
+  const sel = document.getElementById('f-scale-select');
+  if (sel && scaleSelectHas(want)) sel.value = want;
+  switchScale(want);
+}
+
 function startNewRecord() {
   editingId = null;
   resetForm();
   document.getElementById('panel-title').textContent = 'New Record';
-  document.getElementById('f-scale-select').value = session.scale;
-  switchScale(session.scale);
+  applySessionScaleToForm();
   goToPage(0);
   openPanel();
   // Auto-try GPS silently in background
@@ -2070,14 +2289,6 @@ function startNewRecord() {
 function cancelPickMode() {
   exitMapClickMode();
   // Reopen the form panel (user cancelled map tap)
-  openPanel();
-}
-
-function openNewRecord() {
-  // Called after location is already set (from GPS or map tap)
-  document.getElementById('f-scale-select').value = session.scale;
-  switchScale(session.scale);
-  goToPage(0);
   openPanel();
 }
 
@@ -2112,10 +2323,14 @@ function resetForm() {
   ['f-address','f-asset-type','f-building-use','f-floors','f-construction','f-year-building','f-asset-ref',
    'f-road-type','f-road-surface','f-road-lanes','f-road-length','f-road-speed',
    'f-rail-tracks','f-rail-electrified','f-rail-length','f-rail-speed',
+   'f-culvert-type','f-culvert-span','f-culvert-barrels','f-culvert-material',
+   'f-culvert-length','f-culvert-blockage',
    'f-bridge-type','f-bridge-spans','f-bridge-span-length','f-bridge-length','f-bridge-material','f-year-bridge','f-bridge-capacity',
    'f-wall-type','f-wall-height','f-wall-length','f-wall-material',
    'f-infra-type','f-infra-status','f-other-desc',
-   'f-ems-grade','f-ems-structural','f-ems-nonstructural',
+   'f-ems-grade','f-infra-grade','f-ems-structural','f-ems-nonstructural',
+   'f-comp-serviceability','f-comp-secondary','f-comp-primary',
+   'f-comp-structural','f-comp-nonstructural',
    'f-notes','f-followup','f-consequence'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -2123,6 +2338,16 @@ function resetForm() {
   // retired HAZUS/Custom sliders no longer exist in the form
   // Deselect all chips
   document.querySelectorAll('.chip.selected').forEach(c => c.classList.remove('selected'));
+  // The component panels are only rebuilt when the asset type changes, so their
+  // description boxes have to be cleared here or the previous record's wording
+  // stays on screen under an empty selection.
+  document.querySelectorAll('.comp-desc').forEach(function(d) { d.style.display = 'none'; d.textContent = ''; });
+  const overallBox = document.getElementById('component-overall');
+  if (overallBox) {
+    overallBox.style.background = 'var(--bg)';
+    overallBox.style.color = 'var(--text-muted)';
+    overallBox.innerHTML = 'Rate a component to see the overall damage state.';
+  }
 }
 
 function goToPage(n) {
@@ -2190,18 +2415,175 @@ function updatePriorityPreview() {
     DAMAGE_STATES[p.ds-1].short + ' damage  x  ' + CONSEQUENCE_LEVELS[p.consequence-1].label + ' consequence';
 }
 
-function switchScale(v) {
+function switchScale(v, manual) {
+  const prevSec = document.querySelector('.scale-section.active');
+  const prev = prevSec ? prevSec.id.replace('scale-', '') : null;
   document.querySelectorAll('.scale-section').forEach(s => s.classList.remove('active'));
   const sec = document.getElementById('scale-' + v);
   if (sec) sec.classList.add('active');
+  if (manual) scaleChosenByHand = true;
+  // Keep the select in step whether this came from the control or from code, so
+  // switchScale('x') and picking 'x' by hand leave the form in the same state.
+  const scaleSel = document.getElementById('f-scale-select');
+  if (scaleSel && scaleSel.value !== v && scaleSelectHas(v)) scaleSel.value = v;
+  const og = document.getElementById('operational-status-group');
+  if (og) og.style.display = (v === 'none') ? 'none' : 'block';
+  if (prev && prev !== v) carryGradeAcrossScales(prev, v);
   updatePriorityPreview();
   updateOperationalStatus();
+}
+
+// True once the inspector picks a scale themselves, so changing the asset type
+// afterwards does not quietly overwrite their choice.
+let scaleChosenByHand = false;
+
+// Both scales share the index space, so a grade already chosen carries across when the
+// scale changes - otherwise picking the asset type after grading would silently drop
+// the assessment, leaving a record that looks graded but exports as unassessed. The
+// old scale's grade is cleared so a record never carries two conflicting grades.
+// Selects the chip whose text matches, or clears the group when value is empty.
+// Module level because both editRecord and a scale change need it.
+function restoreChip(groupId, hiddenId, value) {
+  const container = document.getElementById(groupId);
+  if (!container) return;
+  container.querySelectorAll('.chip').forEach(function(ch) {
+    const hit = value && ch.textContent.trim() === value;
+    ch.classList.toggle('selected', !!hit);
+  });
+  if (!value) setVal(hiddenId, '');
+  else {
+    const any = Array.prototype.some.call(container.querySelectorAll('.chip'),
+      function(ch) { return ch.textContent.trim() === value; });
+    if (any) setVal(hiddenId, value);
+  }
+}
+
+function carryGradeAcrossScales(from, to) {
+  const fromScale = DAMAGE_SCALES[from], toScale = DAMAGE_SCALES[to];
+  if (!fromScale) return;
+  const current = val(fromScale.input);
+  if (!current) return;
+  const i = fromScale.grades.indexOf(current);
+  setVal(fromScale.input, '');
+  restoreChip(fromScale.chips, fromScale.input, '');
+  if (!toScale || i === -1 || val(toScale.input)) return;
+  setVal(toScale.input, toScale.grades[i]);
+  restoreChip(toScale.chips, toScale.input, toScale.grades[i]);
+}
+
+// 'retaining-wall' -> 'Retaining Wall'. One mapping, derived from ASSET_TYPES, so a
+// type added later needs no second table.
+function assetLabelFromSlug(slug) {
+  if (!slug) return '';
+  return ASSET_TYPES.find(function(t) {
+    return t.toLowerCase().replace(/\s+/g, '-') === String(slug).toLowerCase();
+  }) || '';
 }
 
 function switchAssetFields(type) {
   document.querySelectorAll('.asset-fields').forEach(el => el.style.display = 'none');
   const sec = document.getElementById('af-' + type);
   if (sec) sec.style.display = 'flex';
+  // Bridges and buildings are assessed component by component; everything else
+  // records one overall grade. The label comes from the slug this was called with,
+  // so the function does not depend on a separate field having been set first.
+  const assetLabel = assetLabelFromSlug(type) || val('f-asset-type');
+  const set = componentsFor(assetLabel);
+  const comp = document.getElementById('asset-components');
+  const single = document.getElementById('infrads-single');
+  if (comp) comp.style.display = set ? 'block' : 'none';
+  if (single) single.style.display = set ? 'none' : 'block';
+  if (set) renderComponents(assetLabel);
+  // Follow the asset type unless the inspector has overridden the scale by hand.
+  if (!scaleChosenByHand) {
+    const want = defaultScaleFor(assetLabel);
+    const sel = document.getElementById('f-scale-select');
+    if (sel && sel.value !== want && scaleSelectHas(want)) { sel.value = want; switchScale(want); }
+  }
+  updateComponentOverall();
+}
+
+// ── Component assessment (bridges and buildings) ─
+function renderComponents(assetType) {
+  const host = document.getElementById('component-list');
+  const set = componentsFor(assetType);
+  if (!host || !set) return;
+  // Rebuild only when the set actually changes, so switching pages does not wipe
+  // ratings already entered.
+  if (host.dataset.builtFor === assetType) return;
+  host.dataset.builtFor = assetType;
+  host.innerHTML = set.map(function(c) {
+    const chips = [];
+    for (let i = 1; i <= c.max; i++) {
+      chips.push('<div class="chip damage-' + i + '" title="' + esc(c.desc[i]) + '" ' +
+                 'onclick="selectComponent(this,\'' + c.key + '\',' + i + ')">DS' + i + '</div>');
+    }
+    return '<div class="field-group" data-component="' + c.key + '">' +
+      '<label class="field-label">' + c.label + '</label>' +
+      '<div class="field-hint">' + esc(c.examples) + '</div>' +
+      '<div class="chip-group" id="comp-' + c.key + '-chips">' + chips.join('') +
+        '<div class="chip" onclick="selectComponent(this,\'' + c.key + '\',0)">Not assessed</div>' +
+      '</div>' +
+      '<div class="comp-desc" id="comp-' + c.key + '-desc" style="display:none;"></div>' +
+      '<input type="hidden" id="f-comp-' + c.key + '">' +
+    '</div>';
+  }).join('');
+}
+
+function selectComponent(el, key, level) {
+  const group = el.parentElement;
+  group.querySelectorAll('.chip').forEach(function(c) { c.classList.remove('selected'); });
+  const wasSame = (val('f-comp-' + key) === String(level));
+  const comp = componentByKey(key);
+  const descBox = document.getElementById('comp-' + key + '-desc');
+  if (wasSame || level === 0) {
+    setVal('f-comp-' + key, level === 0 && !wasSame ? '0' : '');
+    if (level === 0 && !wasSame) el.classList.add('selected');
+    if (descBox) descBox.style.display = 'none';
+  } else {
+    el.classList.add('selected');
+    setVal('f-comp-' + key, String(level));
+    if (descBox && comp) { descBox.textContent = comp.desc[level] || ''; descBox.style.display = 'block'; }
+  }
+  updateComponentOverall();
+  updatePriorityPreview();
+  updateOperationalStatus();
+}
+
+// Reads the component inputs as a record-shaped object so the same rollup helpers
+// serve the live form and a stored record.
+function formComponentSnapshot() {
+  const o = { assetType: val('f-asset-type') };
+  ALL_COMPONENTS.forEach(function(c) { o[c.field] = val('f-comp-' + c.key); });
+  return o;
+}
+
+function updateComponentOverall() {
+  const box = document.getElementById('component-overall');
+  if (!box) return;
+  const snap = formComponentSnapshot();
+  const idx = componentOverallIndex(snap);
+  if (!idx) {
+    box.style.background = 'var(--bg)';
+    box.style.color = 'var(--text-muted)';
+    box.innerHTML = 'Rate a component to see the overall damage state.';
+    return;
+  }
+  const color = SEVERITY_COLORS[idx - 1];
+  const gov = governingComponents(snap).map(function(c) { return c.label.toLowerCase(); }).join(' and ');
+  const set = componentsFor(snap.assetType) || [];
+  const skipped = set.filter(function(c) { return !(parseInt(snap[c.field],10) >= 1); });
+  box.style.background = color;
+  box.style.color = (idx === 2) ? '#1a2332' : '#fff';
+  box.innerHTML = '<strong>' + esc(DAMAGE_SCALES.infrads.grades[idx - 1]) + '</strong>' +
+    '<div style="font-size:12px;opacity:0.92;margin-top:2px;">Governed by ' + esc(gov) + '</div>' +
+    (skipped.length ? '<div style="font-size:11px;opacity:0.85;margin-top:3px;">Not assessed: ' +
+       esc(skipped.map(function(c){return c.label.toLowerCase();}).join(', ')) + '</div>' : '');
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function updateSubmitSummary() {
@@ -2377,6 +2759,13 @@ async function submitRecord() {
     roadLanes: document.getElementById('f-road-lanes').value,
     roadLength: document.getElementById('f-road-length').value,
     roadSpeed: document.getElementById('f-road-speed').value,
+    // Culvert
+    culvertType: val('f-culvert-type'),
+    culvertSpan: val('f-culvert-span'),
+    culvertBarrels: val('f-culvert-barrels'),
+    culvertMaterial: val('f-culvert-material'),
+    culvertLength: val('f-culvert-length'),
+    culvertBlockage: val('f-culvert-blockage'),
     // Railway
     railTracks: val('f-rail-tracks'),
     railElectrified: val('f-rail-electrified'),
@@ -2403,9 +2792,17 @@ async function submitRecord() {
     assetRef: document.getElementById('f-asset-ref').value,
     damageScale: effectiveDamageScale(),   // a retired scale is preserved, not overwritten
     // EMS-98
-    emsGrade: document.getElementById('f-ems-grade').value,
-    emsStructural: document.getElementById('f-ems-structural').value,
-    emsNonStructural: document.getElementById('f-ems-nonstructural').value,
+    emsGrade: prevRecord.emsGrade || '',   // retired input; value kept from the record
+    infraGrade: val('f-infra-grade'),
+    // Bridge component damage states; '' when a component was not assessed
+    compServiceability: val('f-comp-serviceability'),
+    compSecondary: val('f-comp-secondary'),
+    compPrimary: val('f-comp-primary'),
+    // Building component damage states
+    compStructural: val('f-comp-structural'),
+    compNonStructural: val('f-comp-nonstructural'),
+    emsStructural: prevRecord.emsStructural || '',
+    emsNonStructural: prevRecord.emsNonStructural || '',
     // Serviceability input retired - operational status is derived from DS instead.
     // Legacy values stay on the record rather than being destroyed.
     habitability: editingId ? (prevRecord.habitability || '') : '',
@@ -2483,7 +2880,7 @@ async function editRecord(id) {
   }
   // Restore asset-specific fields
   if (r.assetType) {
-    const typeMap = {'Building':'building','Road':'road','Bridge':'bridge','Railway':'railway','Retaining Wall':'retaining-wall','Infrastructure':'infrastructure','Other':'other'};
+    const typeMap = {'Building':'building','Road':'road','Bridge':'bridge','Culvert':'culvert','Railway':'railway','Retaining Wall':'retaining-wall','Infrastructure':'infrastructure','Other':'other'};
     const key = typeMap[r.assetType];
     if (key) switchAssetFields(key);
   }
@@ -2499,6 +2896,12 @@ async function editRecord(id) {
   document.getElementById('f-road-length').value = r.roadLength || '';
   document.getElementById('f-road-speed').value = r.roadSpeed || '';
   // Bridge
+  setVal('f-culvert-type', r.culvertType);
+  setVal('f-culvert-span', r.culvertSpan);
+  setVal('f-culvert-barrels', r.culvertBarrels);
+  setVal('f-culvert-material', r.culvertMaterial);
+  setVal('f-culvert-length', r.culvertLength);
+  setVal('f-culvert-blockage', r.culvertBlockage);
   setVal('f-rail-tracks', r.railTracks);
   setVal('f-rail-electrified', r.railElectrified);
   setVal('f-rail-length', r.railLength);
@@ -2522,7 +2925,11 @@ async function editRecord(id) {
   document.getElementById('f-other-desc').value = r.otherDesc || '';
   document.getElementById('f-asset-ref').value = r.assetRef || '';
   editingRecord = r;
-  if (r.damageScale && !scaleSelectHas(r.damageScale)) {
+  // A retired scale that still shares the live index space (EMS-98) is folded into
+  // the live scale at the same severity, since the two differ only in wording. A
+  // retired scale with its own vocabulary (HAZUS, Custom) is left exactly as recorded.
+  const foldsIntoLiveScale = !!(DAMAGE_SCALES[r.damageScale] && DAMAGE_SCALES[r.damageScale].retired);
+  if (r.damageScale && !scaleSelectHas(r.damageScale) && !foldsIntoLiveScale) {
     // Retired scale: show it truthfully in the select as a disabled option rather
     // than leaving the field displaying a scale this record does not use.
     editingRetiredScale = r.damageScale;
@@ -2540,12 +2947,11 @@ async function editRecord(id) {
     showToast('This record uses the retired ' + r.damageScale.toUpperCase() + ' scale; its grade is kept as-is');
   } else {
     editingRetiredScale = null;
-    document.getElementById('f-scale-select').value = r.damageScale || 'none';
-    switchScale(r.damageScale || 'none');
+    const liveScale = foldsIntoLiveScale ? 'infrads' : (r.damageScale || 'none');
+    document.getElementById('f-scale-select').value = liveScale;
+    switchScale(liveScale);
   }
   // EMS
-  document.getElementById('f-ems-structural').value = r.emsStructural || '';
-  document.getElementById('f-ems-nonstructural').value = r.emsNonStructural || '';
   // HAZUS
   // HAZUS fields are retired - values stay on the record and still export
   // Custom
@@ -2559,15 +2965,15 @@ async function editRecord(id) {
     r.laterPhotos.forEach(lp => addLaterPhotoRow(lp));
   }
   // Restore chip selections
-  function restoreChip(groupId, hiddenId, val) {
-    if (!val) return;
-    const container = document.getElementById(groupId);
-    if (!container) return;
-    container.querySelectorAll('.chip').forEach(c => {
-      if (c.textContent.trim() === val) { c.classList.add('selected'); document.getElementById(hiddenId).value = val; }
-    });
+  // A record written on a retired scale opens on the live one at the same step; its
+  // original grade stays stored for provenance and still exports in its own column.
+  var liveGrade = r.infraGrade || '';
+  if (!liveGrade && DAMAGE_SCALES[r.damageScale] && DAMAGE_SCALES[r.damageScale].retired) {
+    var legacyIdx = dsIndexOf(r);
+    if (legacyIdx) liveGrade = DAMAGE_SCALES.infrads.grades[legacyIdx - 1];
   }
-  restoreChip('ems98-chips','f-ems-grade', r.emsGrade || '');
+  restoreChip('infrads-chips','f-infra-grade', liveGrade);
+  restoreBridgeComponents(r);
   restoreChip('consequence-chips','f-consequence', r.consequence || '');
   restoreChip('followup-chips','f-followup', r.followUp || '');
 
@@ -2614,14 +3020,21 @@ async function renderRecords() {
   list.innerHTML = '';
   records.forEach(r => {
     const colorClass = getDamageColorClass(r);
-    const badgeLabel = r.damageScale === 'ems98' ? (r.emsGrade || 'EMS-98')
-      : r.damageScale === 'hazus' ? (r.hazusState || 'HAZUS')
-      : r.damageScale === 'custom' ? (r.customCondition || 'Custom')
-      : 'No Scale';
+    const badgeLabel = damageGradeLabelOf(r) || (r.damageScale && r.damageScale !== 'none' ? 'Not assessed' : 'No Scale');
 
     // Build damage detail string
     let damageDetail = '';
-    if (r.damageScale === 'ems98') {
+    if (usesComponents(r)) {
+      const parts = (componentsFor(r.assetType) || []).map(function(cc) {
+        const v = componentIndexOf(r, cc.key);
+        return cc.label.split(' ')[0] + ': ' + (v ? 'DS' + v : 'n/a');
+      });
+      parts.push('governed by ' + governingLabelOf(r).toLowerCase());
+      damageDetail = parts.join(' · ');
+    } else if (r.damageScale === 'infrads') {
+      const parts = [r.infraGrade, (operationalStatusOf(r)||{}).short].filter(Boolean);
+      damageDetail = parts.join(' · ');
+    } else if (r.damageScale === 'ems98') {
       const parts = [r.emsGrade, r.emsStructural, (operationalStatusOf(r)||{}).short].filter(Boolean);
       damageDetail = parts.join(' · ');
     } else if (r.damageScale === 'hazus') {
@@ -2755,7 +3168,14 @@ async function exportXLSX() {
     'Year Built': r.yearBuilt,
     'Asset Ref': r.assetRef,
     'Damage Scale': r.damageScale,
+    'Damage Grade': damageGradeLabelOf(r),
     'EMS Grade': r.emsGrade,
+    'DS Serviceability': componentIndexOf(r, 'serviceability'),
+    'DS Secondary': componentIndexOf(r, 'secondary'),
+    'DS Primary': componentIndexOf(r, 'primary'),
+    'DS Structural': componentIndexOf(r, 'structural'),
+    'DS Non-structural': componentIndexOf(r, 'nonstructural'),
+    'Governed By': governingLabelOf(r),
     'EMS Structural': r.emsStructural,
     'EMS Non-Structural': r.emsNonStructural,
     'Operational Status': (operationalStatusOf(r) || {}).full || '',
@@ -2805,13 +3225,24 @@ function buildGeoJSONFeatures(records, includePhotos) {
       bridgeType: r.bridgeType, bridgeSpans: r.bridgeSpans, bridgeSpanLength: r.bridgeSpanLength,
       bridgeLength: r.bridgeLength, bridgeMaterial: r.bridgeMaterial,
       // Railway
+      compStructural: r.compStructural, compNonStructural: r.compNonStructural,
+      culvertType: r.culvertType, culvertSpan: r.culvertSpan, culvertBarrels: r.culvertBarrels,
+      culvertMaterial: r.culvertMaterial, culvertBlockage: r.culvertBlockage,
       railTracks: r.railTracks, railElectrified: r.railElectrified,
       railLength: r.railLength, railSpeed: r.railSpeed,
       // Every asset type flattened into one readable field, so a type added later
       // cannot be silently dropped from this export the way railway fields were.
       asset_detail: assetDetailOf(r),
       // Damage
-      damageScale: r.damageScale, emsGrade: r.emsGrade, emsStructural: r.emsStructural,
+      damageScale: r.damageScale, emsGrade: r.emsGrade, infraGrade: r.infraGrade,
+      damage_grade: damageGradeLabelOf(r), emsStructural: r.emsStructural,
+      // Bridge component breakdown and which category set the overall rating
+      ds_serviceability: componentIndexOf(r, 'serviceability'),
+      ds_secondary: componentIndexOf(r, 'secondary'),
+      ds_primary: componentIndexOf(r, 'primary'),
+      ds_structural: componentIndexOf(r, 'structural'),
+      ds_nonstructural: componentIndexOf(r, 'nonstructural'),
+      governed_by: governingLabelOf(r),
       operational_status: (operationalStatusOf(r) || {}).full || '',
       serviceability: serviceabilityLabel(r), hazusState: r.hazusState, hazusLossRatio: r.hazusLossRatio,
       customCondition: r.customCondition, customAction: r.customAction, customScore: r.customScore,
@@ -2929,16 +3360,22 @@ async function exportCSV() {
   if (!records.length) { showToast('No records to export'); return; }
   const keys = ['id','timestamp','inspectorName','inspectorId','organization','mission',
     'lat','lng','address','osmId','osmType','osmName','assetType','buildingUse','floors',
-    'construction','yearBuilt','assetRef','damageScale','emsGrade','emsStructural',
+    'construction','yearBuilt','assetRef','damageScale','emsGrade','infraGrade','emsStructural',
     'emsNonStructural','hazusState','hazusLossRatio','hazusFunctionality',
     'hazusOccupancy','customCondition','customAction','customScore',
     'consequence','urgency','followUp','notes'];
   // derived values are computed, not stored, so they are appended explicitly
-  const derived = ['asset_detail','operational_status','serviceability','ds_index','consequence_index','priority_score','priority_band'];
+  const derived = ['asset_detail','damage_grade','ds_serviceability','ds_secondary','ds_primary',
+    'ds_structural','ds_nonstructural','governed_by',
+    'operational_status','serviceability','ds_index','consequence_index','priority_score','priority_band'];
   const csv = [keys.concat(derived).join(','), ...records.map(r => {
     const p = priorityOf(r) || {};
     return keys.map(k => JSON.stringify(r[k] ?? ''))
-      .concat([ JSON.stringify(assetDetailOf(r)),
+      .concat([ JSON.stringify(assetDetailOf(r)), JSON.stringify(damageGradeLabelOf(r)),
+                JSON.stringify(componentIndexOf(r,'serviceability')), JSON.stringify(componentIndexOf(r,'secondary')),
+                JSON.stringify(componentIndexOf(r,'primary')),
+                JSON.stringify(componentIndexOf(r,'structural')), JSON.stringify(componentIndexOf(r,'nonstructural')),
+                JSON.stringify(governingLabelOf(r)),
                 JSON.stringify((operationalStatusOf(r) || {}).full || ''), JSON.stringify(serviceabilityLabel(r)),
                 JSON.stringify(dsIndexOf(r) || ''), JSON.stringify(consequenceIndexOf(r) || ''),
                 JSON.stringify(p.score || ''), JSON.stringify(p.band || '') ]).join(',');
@@ -3395,33 +3832,6 @@ function qgisMapTip(maxPhotos) {
     '</table><div>' + imgs + '</div></div>';
 }
 
-function qgisQml(maxPhotos) {
-  var fields = '';
-  for (var i = 1; i <= maxPhotos; i++) {
-    fields +=
-      '    <field name="photo' + i + '">\n' +
-      '      <editWidget type="ExternalResource">\n' +
-      '        <config>\n' +
-      '          <Option type="Map">\n' +
-      '            <Option name="DocumentViewer" type="int" value="1"/>\n' +
-      '            <Option name="DocumentViewerHeight" type="int" value="0"/>\n' +
-      '            <Option name="DocumentViewerWidth" type="int" value="0"/>\n' +
-      '            <Option name="FileWidget" type="bool" value="true"/>\n' +
-      '            <Option name="FileWidgetButton" type="bool" value="true"/>\n' +
-      '            <Option name="RelativeStorage" type="int" value="1"/>\n' +
-      '            <Option name="StorageMode" type="int" value="0"/>\n' +
-      '          </Option>\n' +
-      '        </config>\n' +
-      '      </editWidget>\n' +
-      '    </field>\n';
-  }
-  return '<!DOCTYPE qgis PUBLIC \'http://mapserver.org/dtd/qgis.dtd\' \'SYSTEM\'>\n' +
-    '<qgis version="3.34" styleCategories="MapTips|Forms">\n' +
-    '  <mapTip>' + qgisMapTip(maxPhotos).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</mapTip>\n' +
-    '  <fieldConfiguration>\n' + fields + '  </fieldConfiguration>\n' +
-    '</qgis>\n';
-}
-
 function packageReadme(maxPhotos, nRecords, nPhotos, nSkipped) {
   const photoFields = maxPhotos === 1 ? 'photo1' : ('photo1 .. photo' + maxPhotos);
   return [
@@ -3506,13 +3916,6 @@ function packageReadme(maxPhotos, nRecords, nPhotos, nSkipped) {
   ].join('\n');
 }
 
-function damageGradeOf(r) {
-  if (r.damageScale === 'ems98') return r.emsGrade || '';
-  if (r.damageScale === 'hazus') return r.hazusState || '';
-  if (r.damageScale === 'custom') return r.customCondition || '';
-  return '';
-}
-
 function assetDetailOf(r) {
   var d = [];
   if (r.assetType === 'Building') {
@@ -3534,6 +3937,13 @@ function assetDetailOf(r) {
     if (r.roadLanes) d.push('Lanes: ' + r.roadLanes);
     if (r.roadLength) d.push('Length: ' + r.roadLength + ' m');
     if (r.roadSpeed) d.push('Speed limit: ' + r.roadSpeed + ' km/h');
+  } else if (r.assetType === 'Culvert') {
+    if (r.culvertType) d.push('Type: ' + r.culvertType);
+    if (r.culvertSpan) d.push('Span: ' + r.culvertSpan + ' m');
+    if (r.culvertBarrels) d.push('Barrels: ' + r.culvertBarrels);
+    if (r.culvertMaterial) d.push('Material: ' + r.culvertMaterial);
+    if (r.culvertLength) d.push('Length: ' + r.culvertLength + ' m');
+    if (r.culvertBlockage) d.push('Blockage: ' + r.culvertBlockage);
   } else if (r.assetType === 'Railway') {
     if (r.railTracks) d.push('Tracks: ' + r.railTracks);
     if (r.railElectrified) d.push('Electrified: ' + r.railElectrified);
@@ -3581,7 +3991,7 @@ async function exportGISPackage() {
       osm_id: r.osmId || '',
       osm_name: r.osmName || '',
       damage_scale: r.damageScale || '',
-      damage_grade: damageGradeOf(r),
+      damage_grade: damageGradeLabelOf(r),
       structural: r.emsStructural || '',
       operational_status: (operationalStatusOf(r) || {}).full || '',
       serviceability: serviceabilityLabel(r),
@@ -3595,6 +4005,12 @@ async function exportGISPackage() {
       follow_up: r.followUp || '',
       notes: r.notes || '',
       asset_ref: r.assetRef || '',
+      ds_serviceability: componentIndexOf(r, 'serviceability'),
+      ds_secondary: componentIndexOf(r, 'secondary'),
+      ds_primary: componentIndexOf(r, 'primary'),
+      ds_structural: componentIndexOf(r, 'structural'),
+      ds_nonstructural: componentIndexOf(r, 'nonstructural'),
+      governed_by: governingLabelOf(r),
       asset_detail: assetDetailOf(r),
       photo_count: (r.photos || []).length,
       later_batches: (r.laterPhotos || []).map(function(x) { return x.camera + ' [' + x.fileRange + ']'; }).join(' | ')
@@ -3765,7 +4181,7 @@ const CITATION_TEXT = 'Yurdakul, Ö. (2026). FieldSurvey: A web application for 
   + 'https://github.com/ozguryurdakul/reconnaissance';
 
 // Bumped on every build so a cached copy is immediately identifiable.
-const APP_VERSION = 'v2.1 · build 2026-10-23.3';
+const APP_VERSION = 'v2.4 · build 2026-10-24.5';
 
 function copyCitation() {
   const done = function() { showToast('Citation copied'); };
