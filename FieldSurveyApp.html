@@ -447,6 +447,13 @@
 
   /* The published wording for the chosen component damage state, so the inspector
      is reading the definition rather than recalling it. */
+  /* A hollow marker: the asset was logged on purpose without a damage rating,
+     as opposed to an assessment nobody finished. Fill rather than hue, so the
+     difference survives any colour-vision deficiency. */
+  .marker-hollow { background: var(--white) !important; box-shadow: inset 0 0 0 2.5px #adb5bd; }
+
+  .stat-sub { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.3; }
+
   .comp-desc {
     margin-top: 8px; padding: 9px 11px; border-radius: 8px;
     background: var(--bg); border-left: 3px solid var(--primary);
@@ -500,7 +507,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.4 · build 2026-10-24.5</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.5 · build 2026-10-24.7</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -598,7 +605,7 @@
   <div class="stat-row" style="margin-bottom:14px;">
     <div class="stat-box"><div class="stat-num" id="sm-total" style="font-size:22px;">0</div><div class="stat-label">Records</div></div>
     <div class="stat-box"><div class="stat-num" id="sm-scored" style="font-size:22px;">0</div><div class="stat-label">Prioritised</div></div>
-    <div class="stat-box"><div class="stat-num" id="sm-unassessed" style="font-size:22px;">0</div><div class="stat-label">Not assessed</div></div>
+    <div class="stat-box"><div class="stat-num" id="sm-unassessed" style="font-size:22px;">0</div><div class="stat-label">Not assessed</div><div class="stat-sub" id="sm-inventory"></div></div>
   </div>
 
   <div class="sm-card">
@@ -850,7 +857,7 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">v2.4 · build 2026-10-24.5</span>
+        Version: <span id="app-version">v2.5 · build 2026-10-24.7</span>
       </div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
@@ -1212,11 +1219,15 @@
 
     <!-- PAGE 3: DAMAGE -->
     <div class="form-page" id="page-2">
-      <div class="section-title">⚠️ Damage Assessment</div>
+      <div class="section-title">⚠️ Damage &amp; Consequence</div>
 
       <!-- NONE -->
       <div class="scale-section active" id="scale-none">
-        <p style="font-size:14px;color:var(--text-muted)">No damage assessment for this record. Switch damage scale on the previous page to assess.</p>
+        <p style="font-size:14px;color:var(--text-muted);line-height:1.55;">
+          <strong>Inventory only</strong> — this record logs the asset without rating its damage.
+          You can still set the consequence below: it describes what losing this asset would mean
+          for the community, which is true whether or not it has been damaged.
+          To rate damage, change the damage scale on the previous page.</p>
       </div>
 
       <!-- EMS-98 -->
@@ -1609,7 +1620,12 @@ function governingComponents(r) {
   if (!top) return [];
   return componentsAssessed(r).filter(function(x) { return x.v === top; }).map(function(x) { return x.c; });
 }
-function usesComponents(r) { return !!r && !!componentsFor(r.assetType) && componentsAssessed(r).length > 0; }
+// Inventory-only records carry no damage rating even if component values linger from
+// before the scale was changed - otherwise a record could read as unassessed in one
+// place and DS3 in another.
+function usesComponents(r) {
+  return !!r && !isInventoryOnly(r) && !!componentsFor(r.assetType) && componentsAssessed(r).length > 0;
+}
 // One component's DS as a number, or '' when it was not assessed - '' rather than 0
 // so a skipped component stays distinguishable from a rating in every export.
 function componentIndexOf(r, key) {
@@ -1655,6 +1671,15 @@ function restoreBridgeComponents(r) {
 // apart and the mismatch would be invisible. Exports deliberately ignore it.
 const ASSET_TYPES = ['Building', 'Road', 'Bridge', 'Culvert', 'Railway', 'Retaining Wall', 'Infrastructure', 'Other'];
 let assetFilter = 'all';
+
+// An asset logged without rating its damage. Distinct from a record whose assessment
+// was simply never finished: one is complete, the other is a loose end, and they
+// looked identical on the map until this was separated out.
+function isInventoryOnly(r) { return !!r && r.damageScale === 'none'; }
+function assessmentStatusOf(r) {
+  if (isInventoryOnly(r)) return 'Inventory only';
+  return dsIndexOf(r) ? 'Assessed' : 'Not assessed';
+}
 
 function matchesAssetFilter(r) {
   return assetFilter === 'all' || (r && r.assetType === assetFilter);
@@ -2142,9 +2167,13 @@ function createModeIcon(r, mode) {
   const color = recordColorForMode(r, mode);
   const shape = 'shape-' + mode;
   const anchor = (mode === 'damage') ? [13, 25] : [13, 13];
+  // Only when this record would otherwise be plain grey: a hollow marker says the
+  // blank is deliberate. In consequence mode an inventory record is coloured
+  // normally, because its consequence is real data.
+  const hollow = (color === UNASSESSED_COLOR && isInventoryOnly(r)) ? ' marker-hollow' : '';
   return L.divIcon({
     className: '',
-    html: '<div class="marker-shape ' + shape + '" style="background:' + color + '"></div>',
+    html: '<div class="marker-shape ' + shape + hollow + '" style="background:' + color + '"></div>',
     iconSize: [26, 26], iconAnchor: anchor, popupAnchor: [0, -(anchor[1])]
   });
 }
@@ -2174,9 +2203,10 @@ function renderMapLegend() {
     rows = DAMAGE_STATES.map(function(d) { return [d.color, d.label]; });
   }
   rows = rows.concat([[UNASSESSED_COLOR, 'Not assessed']]);
+  if (mapMode !== 'consequence') rows = rows.concat([[UNASSESSED_COLOR, 'Inventory only', true]]);
   el.innerHTML = '<div class="lg-title">' + title + '</div>' +
     rows.map(function(r) {
-      return '<div class="lg-row"><span class="lg-swatch shape-' + mapMode +
+      return '<div class="lg-row"><span class="lg-swatch shape-' + mapMode + (r[2] ? ' marker-hollow' : '') +
              '" style="background:' + r[0] + '"></span><span>' + r[1] + '</span></div>';
     }).join('');
 }
@@ -2428,7 +2458,10 @@ function switchScale(v, manual) {
   if (scaleSel && scaleSel.value !== v && scaleSelectHas(v)) scaleSel.value = v;
   const og = document.getElementById('operational-status-group');
   if (og) og.style.display = (v === 'none') ? 'none' : 'block';
-  if (prev && prev !== v) carryGradeAcrossScales(prev, v);
+  if (prev && prev !== v) {
+    carryGradeAcrossScales(prev, v);
+    if (v === 'none') clearComponentInputs();
+  }
   updatePriorityPreview();
   updateOperationalStatus();
 }
@@ -2456,6 +2489,20 @@ function restoreChip(groupId, hiddenId, value) {
       function(ch) { return ch.textContent.trim() === value; });
     if (any) setVal(hiddenId, value);
   }
+}
+
+// Switching to a scale with no component block hides those inputs but leaves their
+// values in the DOM, so they must be cleared or they would be saved behind a record
+// that claims not to be assessed.
+function clearComponentInputs() {
+  ALL_COMPONENTS.forEach(function(cp) {
+    setVal('f-comp-' + cp.key, '');
+    const group = document.getElementById('comp-' + cp.key + '-chips');
+    if (group) group.querySelectorAll('.chip').forEach(function(ch) { ch.classList.remove('selected'); });
+    const d = document.getElementById('comp-' + cp.key + '-desc');
+    if (d) { d.style.display = 'none'; d.textContent = ''; }
+  });
+  updateComponentOverall();
 }
 
 function carryGradeAcrossScales(from, to) {
@@ -3168,6 +3215,7 @@ async function exportXLSX() {
     'Year Built': r.yearBuilt,
     'Asset Ref': r.assetRef,
     'Damage Scale': r.damageScale,
+    'Assessment': assessmentStatusOf(r),
     'Damage Grade': damageGradeLabelOf(r),
     'EMS Grade': r.emsGrade,
     'DS Serviceability': componentIndexOf(r, 'serviceability'),
@@ -3235,6 +3283,7 @@ function buildGeoJSONFeatures(records, includePhotos) {
       asset_detail: assetDetailOf(r),
       // Damage
       damageScale: r.damageScale, emsGrade: r.emsGrade, infraGrade: r.infraGrade,
+      assessment: assessmentStatusOf(r),
       damage_grade: damageGradeLabelOf(r), emsStructural: r.emsStructural,
       // Bridge component breakdown and which category set the overall rating
       ds_serviceability: componentIndexOf(r, 'serviceability'),
@@ -3365,13 +3414,14 @@ async function exportCSV() {
     'hazusOccupancy','customCondition','customAction','customScore',
     'consequence','urgency','followUp','notes'];
   // derived values are computed, not stored, so they are appended explicitly
-  const derived = ['asset_detail','damage_grade','ds_serviceability','ds_secondary','ds_primary',
+  const derived = ['asset_detail','assessment','damage_grade','ds_serviceability','ds_secondary','ds_primary',
     'ds_structural','ds_nonstructural','governed_by',
     'operational_status','serviceability','ds_index','consequence_index','priority_score','priority_band'];
   const csv = [keys.concat(derived).join(','), ...records.map(r => {
     const p = priorityOf(r) || {};
     return keys.map(k => JSON.stringify(r[k] ?? ''))
-      .concat([ JSON.stringify(assetDetailOf(r)), JSON.stringify(damageGradeLabelOf(r)),
+      .concat([ JSON.stringify(assetDetailOf(r)), JSON.stringify(assessmentStatusOf(r)),
+                JSON.stringify(damageGradeLabelOf(r)),
                 JSON.stringify(componentIndexOf(r,'serviceability')), JSON.stringify(componentIndexOf(r,'secondary')),
                 JSON.stringify(componentIndexOf(r,'primary')),
                 JSON.stringify(componentIndexOf(r,'structural')), JSON.stringify(componentIndexOf(r,'nonstructural')),
@@ -3991,6 +4041,7 @@ async function exportGISPackage() {
       osm_id: r.osmId || '',
       osm_name: r.osmName || '',
       damage_scale: r.damageScale || '',
+      assessment: assessmentStatusOf(r),
       damage_grade: damageGradeLabelOf(r),
       structural: r.emsStructural || '',
       operational_status: (operationalStatusOf(r) || {}).full || '',
@@ -4181,7 +4232,7 @@ const CITATION_TEXT = 'Yurdakul, Ö. (2026). FieldSurvey: A web application for 
   + 'https://github.com/ozguryurdakul/reconnaissance';
 
 // Bumped on every build so a cached copy is immediately identifiable.
-const APP_VERSION = 'v2.4 · build 2026-10-24.5';
+const APP_VERSION = 'v2.5 · build 2026-10-24.7';
 
 function copyCitation() {
   const done = function() { showToast('Citation copied'); };
@@ -4227,6 +4278,9 @@ async function renderSummary() {
   document.getElementById('sm-total').textContent = summaryRecords.length;
   document.getElementById('sm-scored').textContent = scored.length;
   document.getElementById('sm-unassessed').textContent = unassessed;
+  const inventory = summaryRecords.filter(isInventoryOnly).length;
+  const invBox = document.getElementById('sm-inventory');
+  if (invBox) invBox.textContent = inventory ? ('incl. ' + inventory + ' inventory only') : '';
 
   renderMatrix(summaryRecords);
   document.getElementById('sm-chart-ds').innerHTML =
