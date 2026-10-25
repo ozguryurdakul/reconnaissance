@@ -507,7 +507,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.5 · build 2026-10-24.7</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.7 · build 2026-10-25.2</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -857,7 +857,7 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">v2.5 · build 2026-10-24.7</span>
+        Version: <span id="app-version">v2.7 · build 2026-10-25.2</span>
       </div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
@@ -1454,11 +1454,12 @@ const CONSEQUENCE_LEVELS = [
 const PRIORITY_MATRIX = {
   // DS3 is the serviceability limit: at DS3 the crossing is already lost, so where
   // the community depends on it the response is top-tier regardless of how much
-  // structure remains. DS3 is lifted into the Very high band for the two highest
-  // consequence levels, while staying below DS4 and DS5 so a work list sorted by
-  // score still orders sensibly.
+  // structure remains. DS3 is lifted into the Very high band at Extreme consequence,
+  // while staying below DS4 and DS5 so a work list sorted by score still orders
+  // sensibly. At Significant consequence DS3 sits at the very top of High: serious,
+  // and ranked above DS5 x Moderate, but outside the band that dispatches first.
   5: { 1: 20, 2: 25, 3: 40, 4: 45, 5: 50 },  // Extreme      (DS3 raised from 35)
-  4: { 1: 10, 2: 20, 3: 38, 4: 40, 5: 45 },  // Significant  (DS3 raised from 25)
+  4: { 1: 10, 2: 20, 3: 35, 4: 40, 5: 45 },  // Significant  (DS3 top of High)
   3: { 1:  3, 2: 15, 3: 15, 4: 25, 5: 30 },  // Moderate
   2: { 1:  2, 2: 10, 3: 10, 4: 10, 5: 10 },  // Limited
   1: { 1:  1, 2:  1, 3:  1, 4:  1, 5:  1 }   // Minor
@@ -2248,28 +2249,28 @@ function addMarkerForRecord(r) {
   const popupHtml = `
     <div style="min-width:220px;font-family:system-ui,sans-serif;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
-        <strong style="font-size:14px;color:#1a2332;">${r.assetType || 'Record'}</strong>
-        <span style="background:${badgeColor};color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap;">${badgeLabel}</span>
+        <strong style="font-size:14px;color:#1a2332;">${esc(r.assetType || 'Record')}</strong>
+        <span style="background:${badgeColor};color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap;">${esc(badgeLabel)}</span>
       </div>
       <div style="font-size:12px;color:#5a6a7a;line-height:1.8;">
         ${(function(){ const pr = priorityOf(r); return pr
           ? '<div style="margin-bottom:4px;"><span style="background:'+pr.color+';color:'+(pr.band==='Medium'?'#1a2332':'#fff')+';border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;">PRIORITY: '+pr.band.toUpperCase()+'</span></div>'
           : ''; })()}
         ${(function(){ const o = operationalStatusOf(r); return o ? '<div>🚧 ' + o.short + ' (' + (o.serviceable ? 'serviceable' : 'non-serviceable') + ')</div>' : ''; })()}
-        <div>🆔 <strong>${r.id}</strong></div>
-        ${r.address ? `<div>🏠 ${r.address}</div>` : ''}
+        <div>🆔 <strong>${esc(r.id)}</strong></div>
+        ${r.address ? `<div>🏠 ${esc(r.address)}</div>` : ''}
         <div>📍 ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</div>
-        ${r.osmName ? `<div>🔗 ${r.osmName}</div>` : ''}
-        ${r.inspectorName ? `<div>👤 ${r.inspectorName}${r.inspectorId ? ' ('+r.inspectorId+')' : ''}</div>` : ''}
+        ${r.osmName ? `<div>🔗 ${esc(r.osmName)}</div>` : ''}
+        ${r.inspectorName ? `<div>👤 ${esc(r.inspectorName)}${r.inspectorId ? ' ('+esc(r.inspectorId)+')' : ''}</div>` : ''}
         <div>🕐 ${r.timestamp ? r.timestamp.replace('T',' ').slice(0,16) : '—'}</div>
-        ${r.consequence ? `<div>🏘 Consequence: <strong>${r.consequence}</strong></div>` : ''}
+        ${r.consequence ? `<div>🏘 Consequence: <strong>${esc(r.consequence)}</strong></div>` : ''}
         ${r.followUp === 'Yes' ? `<div>🔁 <strong>Follow-up required</strong></div>` : ''}
-        ${r.notes ? `<div style="margin-top:4px;padding:4px 6px;background:#f0f4f8;border-radius:4px;">📝 ${r.notes.slice(0,80)}${r.notes.length>80?'…':''}</div>` : ''}
+        ${r.notes ? `<div style="margin-top:4px;padding:4px 6px;background:#f0f4f8;border-radius:4px;">📝 ${esc(r.notes.slice(0,80))}${r.notes.length>80?'…':''}</div>` : ''}
         ${(r.photos?.length||0) > 0 ? `<div>📷 ${r.photos.length} photo(s)</div>` : ''}
       </div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
-        <button onclick="editRecord('${r.id}')" style="flex:1;padding:6px;background:#1a5f7a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">✏️ Edit</button>
-        <button onclick="flyAndClose('${r.id}')" style="flex:1;padding:6px;background:#f0f4f8;color:#1a2332;border:1px solid #d0dde8;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📋 Records</button>
+        <button onclick="editRecord('${esc(r.id)}')" style="flex:1;padding:6px;background:#1a5f7a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">✏️ Edit</button>
+        <button onclick="flyAndClose('${esc(r.id)}')" style="flex:1;padding:6px;background:#f0f4f8;color:#1a2332;border:1px solid #d0dde8;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📋 Records</button>
       </div>
     </div>`;
   const m = L.marker([r.lat, r.lng], { icon: createModeIcon(r, mapMode) })
@@ -2768,6 +2769,40 @@ function getLaterPhotosFromDOM() {
 // ══════════════════════════════════════════════
 // SUBMIT / EDIT / DELETE
 // ══════════════════════════════════════════════
+// Record ids used to be the timestamp alone, so two inspectors on separate devices
+// who saved within the same millisecond produced the same id - and the end-of-day
+// merge then overwrote one survey point with the other, silently. The random suffix
+// makes that collision vanishingly unlikely; mergeRecords below covers ids already
+// created under the old scheme.
+function newRecordId() {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return 'rec_' + Date.now() + '_' + rand;
+}
+
+// Two records are the same observation if they were made by the same inspector at the
+// same moment in the same place. Anything else sharing an id is a collision, not a
+// duplicate, and must keep both.
+function recordSignature(r) {
+  return [r.timestamp || '', r.inspectorName || '', r.lat, r.lng].join('|');
+}
+
+// Merges incoming records without ever dropping one. Returns what actually happened
+// so the message can say so instead of just counting the file's rows.
+async function mergeRecords(incoming) {
+  const existing = await dbGetAll();
+  const byId = {};
+  existing.forEach(function(r) { byId[r.id] = r; });
+  let added = 0, updated = 0, rekeyed = 0;
+  for (const r of incoming) {
+    const clash = byId[r.id];
+    if (!clash) { await dbPut(r); byId[r.id] = r; added++; continue; }
+    if (recordSignature(clash) === recordSignature(r)) { await dbPut(r); byId[r.id] = r; updated++; continue; }
+    const fresh = Object.assign({}, r, { id: newRecordId(), originalId: r.id });
+    await dbPut(fresh); byId[fresh.id] = fresh; rekeyed++;
+  }
+  return { added: added, updated: updated, rekeyed: rekeyed };
+}
+
 async function submitRecord() {
   if (!pendingLat) { showToast('No location set'); return; }
 
@@ -2782,7 +2817,7 @@ async function submitRecord() {
   }
 
   const record = {
-    id: editingId || 'rec_' + Date.now(),
+    id: editingId || newRecordId(),
     timestamp: new Date().toISOString(),
     inspectorName: session.name,
     inspectorId: session.id,
@@ -3101,7 +3136,7 @@ async function renderRecords() {
     let photosHtml = '';
     if (r.photos && r.photos.length > 0) {
       const thumbs = r.photos.map((p, i) => `
-        <div onclick="openPhotoViewer('${r.id}',${i})"
+        <div onclick="openPhotoViewer('${esc(r.id)}',${i})"
              style="cursor:pointer;width:60px;height:60px;border-radius:6px;overflow:hidden;background:var(--bg);border:1px solid var(--border);flex-shrink:0;">
           <img src="${p.dataUrl}" style="width:60px;height:60px;object-fit:cover;display:block;">
         </div>
@@ -3122,8 +3157,8 @@ async function renderRecords() {
         <div style="background:var(--bg);border-radius:6px;padding:8px 10px;font-size:12px;display:flex;gap:8px;align-items:center;">
           <span style="font-size:16px;">📷</span>
           <div>
-            <div style="font-weight:600;">${lp.camera || 'Unknown device'}</div>
-            <div style="color:var(--text-muted);">Files: ${lp.fileRange || '—'}</div>
+            <div style="font-weight:600;">${esc(lp.camera || 'Unknown device')}</div>
+            <div style="color:var(--text-muted);">Files: ${esc(lp.fileRange || '—')}</div>
             <div style="color:var(--primary);font-size:11px;">📍 Record location: ${photoCoordStr}</div>
           </div>
         </div>
@@ -3148,23 +3183,23 @@ async function renderRecords() {
     card.innerHTML = `
       <div class="record-card-header">
         <div>
-          <div class="record-title">${r.assetType || 'Record'}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${r.timestamp ? r.timestamp.replace('T',' ').slice(0,16) : '—'} · ${r.inspectorName||'—'}</div>
+          <div class="record-title">${esc(r.assetType || 'Record')}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${r.timestamp ? esc(r.timestamp.replace('T',' ').slice(0,16)) : '—'} · ${esc(r.inspectorName||'—')}</div>
         </div>
         <div class="damage-badge badge-${colorClass}">${badgeLabel}</div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:13px;">
-        ${r.address ? `<div>🏠 <strong>${r.address}</strong></div>` : ''}
+        ${r.address ? `<div>🏠 <strong>${esc(r.address)}</strong></div>` : ''}
         <div>📍 <a href="${googleMapsUrl}" target="_blank" style="color:var(--primary);text-decoration:none;">${photoCoordStr}</a>
-          ${r.osmName ? ` · 🔗 OSM: ${r.osmName}` : ''}
+          ${r.osmName ? ` · 🔗 OSM: ${esc(r.osmName)}` : ''}
         </div>
-        ${assetDetails ? `<div style="color:var(--text-muted);">🏗 ${assetDetails}</div>` : ''}
-        ${damageDetail ? `<div style="color:var(--text-muted);">⚠️ ${damageDetail}</div>` : ''}
-        ${r.consequence ? `<div>🏘 Consequence: <strong>${r.consequence}</strong></div>` : ''}
+        ${assetDetails ? `<div style="color:var(--text-muted);">🏗 ${esc(assetDetails)}</div>` : ''}
+        ${damageDetail ? `<div style="color:var(--text-muted);">⚠️ ${esc(damageDetail)}</div>` : ''}
+        ${r.consequence ? `<div>🏘 Consequence: <strong>${esc(r.consequence)}</strong></div>` : ''}
         ${r.followUp === 'Yes' ? `<div>🔁 <strong>Follow-up required</strong></div>` : ''}
-        ${r.urgency ? `<div style="color:var(--text-muted);">🚨 Urgency: ${r.urgency} <span style="font-size:10px;">(retired field)</span></div>` : ''}
-        ${r.notes ? `<div style="background:var(--bg);border-radius:6px;padding:6px 10px;margin-top:4px;font-size:12px;color:var(--text-muted);">📝 ${r.notes}</div>` : ''}
+        ${r.urgency ? `<div style="color:var(--text-muted);">🚨 Urgency: ${esc(r.urgency)} <span style="font-size:10px;">(retired field)</span></div>` : ''}
+        ${r.notes ? `<div style="background:var(--bg);border-radius:6px;padding:6px 10px;margin-top:4px;font-size:12px;color:var(--text-muted);">📝 ${esc(r.notes)}</div>` : ''}
       </div>
 
       ${miniMatrixHTML(r)}
@@ -3172,10 +3207,10 @@ async function renderRecords() {
       ${laterHtml}
 
       <div class="record-actions" style="margin-top:12px;">
-        <button class="btn btn-secondary btn-sm ra-edit" onclick="editRecord('${r.id}')">✏️ Edit / Add Photos</button>
+        <button class="btn btn-secondary btn-sm ra-edit" onclick="editRecord('${esc(r.id)}')">✏️ Edit / Add Photos</button>
         <button class="btn btn-secondary btn-sm" onclick="flyToRecord(${r.lat},${r.lng})">🗺 Map</button>
-        ${(r.photos && r.photos.length) ? `<button class="btn btn-secondary btn-sm js-save-photos" data-rec="${r.id}">⬇ Save Photos</button>` : ''}
-        <button class="btn btn-secondary btn-sm ra-delete" style="color:var(--danger)" onclick="deleteRecord('${r.id}')">🗑 Delete</button>
+        ${(r.photos && r.photos.length) ? `<button class="btn btn-secondary btn-sm js-save-photos" data-rec="${esc(r.id)}">⬇ Save Photos</button>` : ''}
+        <button class="btn btn-secondary btn-sm ra-delete" style="color:var(--danger)" onclick="deleteRecord('${esc(r.id)}')">🗑 Delete</button>
       </div>
     `;
     list.appendChild(card);
@@ -3251,7 +3286,7 @@ async function exportXLSX() {
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Records');
-  XLSX.writeFile(wb, `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}.xlsx`);
+  XLSX.writeFile(wb, exportBase() + '.xlsx');
   showToast('XLSX exported ✓');
 }
 
@@ -3317,7 +3352,7 @@ async function exportGeoJSON() {
   const records = await dbGetAll();
   if (!records.length) { showToast('No records to export'); return; }
   const geojson = { type: 'FeatureCollection', features: buildGeoJSONFeatures(records, false) };
-  downloadJSON(geojson, `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}.geojson`, 'application/geo+json');
+  downloadJSON(geojson, exportBase() + '.geojson', 'application/geo+json');
   showToast('GeoJSON exported ✓');
 }
 
@@ -3337,7 +3372,7 @@ async function saveFullSession() {
   const blob = new Blob([json], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}.fieldsurveyjson`;
+  a.download = exportBase() + '.fieldsurveyjson';
   a.click();
   showToast(`Session saved (${sizeMB} MB) ✓`);
   const status = document.getElementById('session-status');
@@ -3363,28 +3398,31 @@ async function loadFullSession(input, replace) {
       const payload = JSON.parse(e.target.result);
       if (payload._type !== 'FieldSurveySession') { showToast('Invalid session file'); return; }
       if (replace) await dbClear();
-      let count = 0;
-      for (const r of payload.records) {
-        await dbPut(r);
-        count++;
-      }
+      const result = await mergeRecords(payload.records || []);
+      const count = result.added + result.updated + result.rekeyed;
       // Reload map markers
       if (map) Object.values(recordMarkers).forEach(m => map.removeLayer(m));
       recordMarkers = {};
       await loadRecordsOnMap();
       // Update session info
       if (payload.session && payload.session.name) {
-        session = { ...payload.session, date: new Date().toISOString().split('T')[0] };
+        // Merge over the current session rather than replacing it, so a file that
+        // omits a field does not leave the app without one.
+        session = { ...session, ...payload.session, date: new Date().toISOString().split('T')[0] };
         saveSessionToStorage();
         updateTopbar();
         syncSettingsFields();
       }
-      showToast(`${count} records loaded ✓`);
+      const summary = result.rekeyed
+        ? `${count} records loaded ✓ (${result.rekeyed} had clashing ids and were kept under new ones)`
+        : (result.updated ? `${count} records loaded ✓ (${result.updated} already present)`
+                          : `${count} records loaded ✓`);
+      showToast(summary);
       await buildAssetFilterOptions();
       renderRecords();
       const status = document.getElementById('session-status');
       if (status) {
-        status.textContent = `✓ ${count} records loaded successfully`;
+        status.textContent = `✓ ${summary.replace(' ✓','')}`;
         status.style.display = 'block';
         setTimeout(() => status.style.display = 'none', 4000);
       }
@@ -3433,7 +3471,7 @@ async function exportCSV() {
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `FieldSurvey_${session.mission.replace(/\s+/g,'_')}_${session.date}.csv`;
+  a.download = exportBase() + '.csv';
   a.click();
   showToast('CSV exported ✓');
 }
@@ -3818,7 +3856,7 @@ async function saveAllPhotos() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'FieldSurvey_photos_' + safeName(session.mission) + '_' + session.date + '.zip';
+  a.download = exportBase().replace('FieldSurvey_', 'FieldSurvey_photos_') + '.zip';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(url); }, 3000);
   showToast(n + ' photos from ' + withPhotos.length + ' records saved');
@@ -3856,6 +3894,14 @@ function openPhotoInTab() {
 // referenced by relative path: base64 embedded in attributes is only text
 // to a GIS, so the images must exist as files on disk.
 // ---------------------------------------------------------------
+// Every export filename goes through here. A session file that arrived without a
+// mission used to make all four exports throw on the filename alone, with no message.
+function exportBase() {
+  const m = safeName(session.mission || 'survey');
+  const d = session.date || new Date().toISOString().split('T')[0];
+  return 'FieldSurvey_' + (m || 'survey') + '_' + d;
+}
+
 function safeName(s) {
   return String(s == null ? '' : s).replace(/[^a-zA-Z0-9]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '');
 }
@@ -4096,7 +4142,7 @@ async function exportGISPackage() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'FieldSurvey_GIS_' + safeName(session.mission) + '_' + session.date + '.zip';
+  a.download = exportBase().replace('FieldSurvey_', 'FieldSurvey_GIS_') + '.zip';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(url); }, 3000);
   showToast('GIS package: ' + features.length + ' records, ' + totalPhotos + ' photos' +
@@ -4232,7 +4278,7 @@ const CITATION_TEXT = 'Yurdakul, Ö. (2026). FieldSurvey: A web application for 
   + 'https://github.com/ozguryurdakul/reconnaissance';
 
 // Bumped on every build so a cached copy is immediately identifiable.
-const APP_VERSION = 'v2.5 · build 2026-10-24.7';
+const APP_VERSION = 'v2.7 · build 2026-10-25.2';
 
 function copyCitation() {
   const done = function() { showToast('Citation copied'); };
