@@ -507,7 +507,7 @@
 <!-- ══ SETUP OVERLAY ══ -->
 <div id="setup-overlay">
   <div class="setup-logo">Field<span>Survey</span></div>
-  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.7 · build 2026-10-25.2</div>
+  <div class="setup-sub">Damage Assessment &amp; Field Inspection &nbsp;&middot;&nbsp; v2.8 · build 2026-10-28.1</div>
   <div class="setup-card">
     <h2>Session Setup</h2>
     <div class="field-group">
@@ -857,7 +857,7 @@
     <div class="settings-card" style="font-size:13px; color:var(--text-muted); gap:4px;">
       <div><strong>FieldSurvey</strong> — Offline Field Inspection Tool</div>
       <div style="background:var(--primary-light);color:var(--primary);border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;">
-        Version: <span id="app-version">v2.7 · build 2026-10-25.2</span>
+        Version: <span id="app-version">v2.8 · build 2026-10-28.1</span>
       </div>
       <div>Map: OpenStreetMap © contributors</div>
       <div>Data stored locally on this device (IndexedDB)</div>
@@ -3906,11 +3906,23 @@ function safeName(s) {
   return String(s == null ? '' : s).replace(/[^a-zA-Z0-9]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '');
 }
 
+// The folder the photos sit in, as a QGIS expression. It is taken from the layer's
+// own data source, so it works whether or not the project has been saved and wherever
+// the project file lives; @project_folder is only a fallback. The earlier version used
+// @project_folder alone, which is empty in an unsaved project - every image silently
+// resolved to nothing. Backslashes are normalised and any leading slash dropped so the
+// file:/// prefix is right on both Windows (C:/...) and Unix (/home/...).
+function qgisPhotoDirExpr() {
+  return "regexp_replace(replace(coalesce(nullif(file_path(layer_property(@layer, 'path')), ''), " +
+         "@project_folder), '\\\\', '/'), '^/+', '')";
+}
+
 function qgisMapTip(maxPhotos) {
   var imgs = '';
+  var dir = qgisPhotoDirExpr();
   for (var i = 1; i <= maxPhotos; i++) {
     imgs += '[% CASE WHEN "photo' + i + '" IS NOT NULL AND "photo' + i + '" != \'\' THEN ' +
-            '\'<img src="\' || @project_folder || \'/\' || "photo' + i + '" || \'" width="260">\' ELSE \'\' END %]';
+            '\'<img src="file:///\' || ' + dir + ' || \'/\' || "photo' + i + '" || \'" width="260">\' ELSE \'\' END %]';
   }
   return '<div style="font-family:sans-serif;font-size:12px;max-width:300px">' +
     '<div style="background:#1a5f7a;color:#fff;padding:6px 8px;font-weight:bold">[% "asset_type" %] &mdash; [% "record_id" %]</div>' +
@@ -3936,6 +3948,7 @@ function packageReadme(maxPhotos, nRecords, nPhotos, nSkipped) {
     '',
     'Contents',
     '  survey.geojson         ' + nRecords + ' records, standard GeoJSON (EPSG:4326 / WGS 84)',
+    '  survey.qml             Style applied automatically when survey.geojson is added',
     '  photos/                ' + nPhotos + ' photo files (JPEG)',
     '  style_damage.qml       QGIS style: coloured by damage state (circles)',
     '  style_consequence.qml  QGIS style: coloured by consequence (squares)',
@@ -3949,24 +3962,32 @@ function packageReadme(maxPhotos, nRecords, nPhotos, nSkipped) {
     'each record stores their RELATIVE paths in the fields ' + photoFields + '.',
     '',
     'IMPORTANT - keep the folder together',
-    '  Unzip the archive and keep survey.geojson and photos/ side by side.',
-    '  Save your GIS project file INTO THAT SAME FOLDER: the photo paths are',
-    '  relative, so a project saved elsewhere will load the attributes but not',
-    '  the images.',
+    '  Unzip the archive and keep survey.geojson, survey.qml and photos/ side by',
+    '  side. The photo paths are stored relative to survey.geojson and are',
+    '  resolved from wherever that file sits, so the project file itself can be',
+    '  saved anywhere - but moving survey.geojson away from photos/ breaks them.',
+    '',
+    'Seeing the photos',
+    '  Hover a point: the map tip shows the record details and the photographs.',
+    '  Click a point with the Identify tool and set View (bottom of the Identify',
+    '  panel) to Form rather than Tree - the Tree view only ever prints the file',
+    '  path as text, while the Form view renders each photo.',
+    '  Do not add a photo to the map as its own layer: a field photograph is not',
+    '  georeferenced and will render as a blank rectangle.',
     '',
     'Three thematic layers from one file',
     '  There is a single data file on purpose - duplicating the geometry into',
     '  three files would let the copies drift apart. To get three layers, add',
     '  survey.geojson three times and style each one differently:',
     '',
-    '  1. Save the QGIS project into the unzipped folder.',
-    '  2. Drag survey.geojson in three times (three entries appear in Layers).',
-    '  3. For each one: Layer Properties > Symbology > Style (bottom) >',
-    '     Load Style > pick style_damage.qml / style_consequence.qml /',
-    '     style_priority.qml.',
-    '  4. Rename the layers in the panel to Damage / Consequence / Priority.',
-    '  5. Each style also carries the attribute form and the map tip, so photos',
-    '     show whichever layer you click.',
+    '  1. Drag survey.geojson in three times (three entries appear in Layers).',
+    '     Each picks up survey.qml automatically and arrives coloured by damage.',
+    '  2. Leave the first as it is. For the other two: Layer Properties >',
+    '     Symbology > Style (bottom) > Load Style > pick style_consequence.qml',
+    '     or style_priority.qml.',
+    '  3. Rename the layers in the panel to Damage / Consequence / Priority.',
+    '  4. Every style carries the attribute form and the map tip, so the photos',
+    '     show on whichever layer you hover or click.',
     '',
     '  The styles use different marker shapes (circle / square / diamond) so the',
     '  layers stay distinguishable when more than one is switched on, and in',
@@ -4133,6 +4154,10 @@ async function exportGISPackage() {
     crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:OGC:1.3:CRS84' } },
     features: features
   }, null, 2));
+  // QGIS automatically applies a .qml sitting beside the data with the same base
+  // name, so this one needs no Load Style step: drag survey.geojson in and the damage
+  // colouring, the photo widgets and the map tips are already there.
+  zip.file('survey.qml', damageStyleQml(maxPhotos));
   zip.file('style_damage.qml', damageStyleQml(maxPhotos));
   zip.file('style_consequence.qml', consequenceStyleQml(maxPhotos));
   zip.file('style_priority.qml', priorityStyleQml(maxPhotos));
@@ -4278,7 +4303,7 @@ const CITATION_TEXT = 'Yurdakul, Ö. (2026). FieldSurvey: A web application for 
   + 'https://github.com/ozguryurdakul/reconnaissance';
 
 // Bumped on every build so a cached copy is immediately identifiable.
-const APP_VERSION = 'v2.7 · build 2026-10-25.2';
+const APP_VERSION = 'v2.8 · build 2026-10-28.1';
 
 function copyCitation() {
   const done = function() { showToast('Citation copied'); };
